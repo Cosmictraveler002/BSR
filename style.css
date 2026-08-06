@@ -2506,7 +2506,7 @@ body {
     height: 48px;
     border-radius: 50%;
     border: 1.5px solid rgba(255, 255, 255, 0.4);
-    background-color: rgba(32, 10, 13, 0.75);
+    background-color: rgba(32, 10, 13, 0.85);
     backdrop-filter: blur(8px);
     color: #ffffff;
     font-size: 1.25rem;
@@ -2516,16 +2516,30 @@ body {
     align-self: center;
     margin-left: 12px;
     margin-right: 24px;
-    transition: transform 0.3s ease, border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.75);
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                visibility 0.3s ease, 
+                border-color 0.3s ease, 
+                background-color 0.3s ease, 
+                box-shadow 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
     user-select: none;
 }
 
-.menu-swipe-indicator:hover {
+.menu-swipe-indicator.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+
+.menu-swipe-indicator.visible:hover {
     transform: scale(1.15);
     border-color: var(--color-secondary, #bb0024);
     background-color: var(--color-secondary, #bb0024);
-    box-shadow: 0 0 20px rgba(187, 0, 36, 0.6);
+    box-shadow: 0 0 22px rgba(187, 0, 36, 0.7);
 }
 
 .swipe-arrow-icon {

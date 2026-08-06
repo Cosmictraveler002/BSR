@@ -344,16 +344,35 @@ document.addEventListener('DOMContentLoaded', () => {
             element.addEventListener('mouseenter', () => {
                 stopAutoScrollRight();
                 hoverScrollTimer = setTimeout(() => {
+                    if (swipeIndicator) swipeIndicator.classList.add('visible');
                     startAutoScrollRight();
-                }, 10);
+                }, 15); // 10ms - 20ms activation delay window
             });
-            element.addEventListener('mouseleave', () => {
+
+            element.addEventListener('mouseleave', (e) => {
+                const related = e.relatedTarget;
+                if (related && swipeIndicator && (related === swipeIndicator || swipeIndicator.contains(related) || element.contains(related))) {
+                    return;
+                }
+                if (swipeIndicator) swipeIndicator.classList.remove('visible');
                 stopAutoScrollRight();
             });
         }
 
         if (swipeIndicator) {
-            bindHoverTrigger(swipeIndicator);
+            swipeIndicator.addEventListener('mouseenter', () => {
+                stopAutoScrollRight();
+                swipeIndicator.classList.add('visible');
+                hoverScrollTimer = setTimeout(() => {
+                    startAutoScrollRight();
+                }, 15);
+            });
+
+            swipeIndicator.addEventListener('mouseleave', () => {
+                swipeIndicator.classList.remove('visible');
+                stopAutoScrollRight();
+            });
+
             swipeIndicator.addEventListener('click', () => {
                 const card = dishesSliderWrap.querySelector('.dish-card');
                 const scrollAmount = card ? card.offsetWidth + 24 : 320;
@@ -373,6 +392,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll('.menu-filter').forEach(btn => {
             btn.addEventListener('click', () => {
+                if (swipeIndicator) swipeIndicator.classList.remove('visible');
+                stopAutoScrollRight();
                 setTimeout(attachHoverToRightmostCard, 50);
             });
         });
