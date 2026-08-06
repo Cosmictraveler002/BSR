@@ -3,6 +3,17 @@
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Force scroll to Top / Hero section on reload (except Admin Portal) ---
+    if (!document.body.classList.contains('admin-page-body')) {
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+        window.scrollTo(0, 0);
+        if (window.location.hash) {
+            history.replaceState(null, null, window.location.pathname + window.location.search);
+        }
+    }
+
     // --- Full-Screen Asset Preloader with Progress Tracking ---
     (function initAppPreloader() {
         const preloader = document.getElementById('app-preloader');
@@ -58,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ]).then(() => {
             updateProgress(100);
             setTimeout(() => {
+                if (!document.body.classList.contains('admin-page-body')) window.scrollTo(0, 0);
                 preloader.classList.add('fade-out');
                 setTimeout(() => {
                     if (document.body.contains(preloader)) preloader.remove();
@@ -68,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             if (document.body.contains(preloader)) {
                 updateProgress(100);
+                if (!document.body.classList.contains('admin-page-body')) window.scrollTo(0, 0);
                 preloader.classList.add('fade-out');
                 setTimeout(() => {
                     if (document.body.contains(preloader)) preloader.remove();
