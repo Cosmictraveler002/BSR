@@ -2501,8 +2501,19 @@ body {
     transform: translateZ(0);
 }
 
-/* --- Rightmost Swipe Arrow Indicator --- */
+/* --- Floating Left & Right Swipe Arrow Indicators --- */
+.dishes-slider-wrap {
+    position: relative;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 4px 24px;
+}
+
 .menu-swipe-indicator {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%) scale(0.75);
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2516,13 +2527,8 @@ body {
     font-size: 1.25rem;
     font-weight: 700;
     cursor: pointer;
-    flex-shrink: 0;
-    align-self: center;
-    margin-left: 12px;
-    margin-right: 24px;
     opacity: 0;
     visibility: hidden;
-    transform: scale(0.75);
     transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
                 transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
                 visibility 0.3s ease, 
@@ -2533,14 +2539,22 @@ body {
     user-select: none;
 }
 
+.menu-swipe-indicator.swipe-prev {
+    left: 16px;
+}
+
+.menu-swipe-indicator.swipe-next {
+    right: 16px;
+}
+
 .menu-swipe-indicator.visible {
     opacity: 1;
     visibility: visible;
-    transform: scale(1);
+    transform: translateY(-50%) scale(1);
 }
 
 .menu-swipe-indicator.visible:hover {
-    transform: scale(1.15);
+    transform: translateY(-50%) scale(1.15);
     border-color: var(--color-secondary, #bb0024);
     background-color: var(--color-secondary, #bb0024);
     box-shadow: 0 0 22px rgba(187, 0, 36, 0.7);

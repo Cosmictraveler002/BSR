@@ -311,95 +311,76 @@ document.addEventListener('DOMContentLoaded', () => {
             dishesSliderWrap.scrollLeft = scrollLeft - walk;
         });
 
-        // --- Rightmost Card & Swipe Arrow Hover Auto-Scroll (10ms Hover Trigger) ---
-        const swipeIndicator = document.getElementById('menu-swipe-indicator');
-        let hoverScrollTimer = null;
-        let autoScrollInterval = null;
+        // --- Menu Slider Floating Left & Right Buttons (30ms Hover Swipe) ---
+        const swipePrev = document.getElementById('menu-swipe-prev');
+        const swipeNext = document.getElementById('menu-swipe-next');
 
-        function startAutoScrollRight() {
-            if (autoScrollInterval) return;
-            const card = dishesSliderWrap.querySelector('.dish-card');
-            const scrollAmount = card ? card.offsetWidth + 24 : 320;
-            
-            dishesSliderWrap.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        let buttonHoverTimer = null;
+        let buttonRepeatTimer = null;
 
-            autoScrollInterval = setInterval(() => {
-                dishesSliderWrap.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-            }, 600);
-        }
-
-        function stopAutoScrollRight() {
-            if (hoverScrollTimer) {
-                clearTimeout(hoverScrollTimer);
-                hoverScrollTimer = null;
-            }
-            if (autoScrollInterval) {
-                clearInterval(autoScrollInterval);
-                autoScrollInterval = null;
+        function setButtonsVisibility(show) {
+            if (window.innerWidth <= 768) return;
+            if (show) {
+                if (swipePrev) swipePrev.classList.add('visible');
+                if (swipeNext) swipeNext.classList.add('visible');
+            } else {
+                if (swipePrev) swipePrev.classList.remove('visible');
+                if (swipeNext) swipeNext.classList.remove('visible');
             }
         }
 
-        function bindHoverTrigger(element) {
-            if (!element) return;
-            element.addEventListener('mouseenter', () => {
-                if (window.innerWidth <= 768) return;
-                stopAutoScrollRight();
-                hoverScrollTimer = setTimeout(() => {
-                    if (swipeIndicator && window.innerWidth > 768) swipeIndicator.classList.add('visible');
-                    startAutoScrollRight();
-                }, 15);
-            });
+        dishesSliderWrap.addEventListener('mouseenter', () => setButtonsVisibility(true));
+        dishesSliderWrap.addEventListener('mouseleave', () => {
+            setButtonsVisibility(false);
+            clearHoverTimers();
+        });
 
-            element.addEventListener('mouseleave', (e) => {
-                if (window.innerWidth <= 768) return;
-                const related = e.relatedTarget;
-                if (related && swipeIndicator && (related === swipeIndicator || swipeIndicator.contains(related) || element.contains(related))) {
-                    return;
-                }
-                if (swipeIndicator) swipeIndicator.classList.remove('visible');
-                stopAutoScrollRight();
+        function clearHoverTimers() {
+            if (buttonHoverTimer) {
+                clearTimeout(buttonHoverTimer);
+                buttonHoverTimer = null;
+            }
+            if (buttonRepeatTimer) {
+                clearTimeout(buttonRepeatTimer);
+                buttonRepeatTimer = null;
+            }
+        }
+
+        function triggerButtonSwipe(direction) {
+            if (window.innerWidth <= 768) return;
+            clearHoverTimers();
+
+            buttonHoverTimer = setTimeout(() => {
+                const card = dishesSliderWrap.querySelector('.dish-card');
+                const scrollAmount = card ? card.offsetWidth + 24 : 320;
+                dishesSliderWrap.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+
+                // Optional gentle secondary step after 850ms if mouse remains held on button
+                buttonRepeatTimer = setTimeout(() => {
+                    dishesSliderWrap.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+                }, 850);
+            }, 30); // 30ms hover threshold window
+        }
+
+        if (swipePrev) {
+            swipePrev.addEventListener('mouseenter', () => triggerButtonSwipe(-1));
+            swipePrev.addEventListener('mouseleave', clearHoverTimers);
+            swipePrev.addEventListener('click', () => {
+                const card = dishesSliderWrap.querySelector('.dish-card');
+                const scrollAmount = card ? card.offsetWidth + 24 : 320;
+                dishesSliderWrap.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
             });
         }
 
-        if (swipeIndicator) {
-            swipeIndicator.addEventListener('mouseenter', () => {
-                if (window.innerWidth <= 768) return;
-                stopAutoScrollRight();
-                swipeIndicator.classList.add('visible');
-                hoverScrollTimer = setTimeout(() => {
-                    startAutoScrollRight();
-                }, 15);
-            });
-
-            swipeIndicator.addEventListener('mouseleave', () => {
-                swipeIndicator.classList.remove('visible');
-                stopAutoScrollRight();
-            });
-
-            swipeIndicator.addEventListener('click', () => {
+        if (swipeNext) {
+            swipeNext.addEventListener('mouseenter', () => triggerButtonSwipe(1));
+            swipeNext.addEventListener('mouseleave', clearHoverTimers);
+            swipeNext.addEventListener('click', () => {
                 const card = dishesSliderWrap.querySelector('.dish-card');
                 const scrollAmount = card ? card.offsetWidth + 24 : 320;
                 dishesSliderWrap.scrollBy({ left: scrollAmount, behavior: 'smooth' });
             });
         }
-
-        function attachHoverToRightmostCard() {
-            const allCards = Array.from(dishesSliderWrap.querySelectorAll('.dish-card')).filter(c => c.style.display !== 'none');
-            if (allCards.length > 0) {
-                const lastCard = allCards[allCards.length - 1];
-                bindHoverTrigger(lastCard);
-            }
-        }
-
-        attachHoverToRightmostCard();
-
-        document.querySelectorAll('.menu-filter').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (swipeIndicator) swipeIndicator.classList.remove('visible');
-                stopAutoScrollRight();
-                setTimeout(attachHoverToRightmostCard, 50);
-            });
-        });
     }
 
     // ==========================================================================
