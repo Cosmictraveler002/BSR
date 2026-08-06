@@ -342,14 +342,16 @@ document.addEventListener('DOMContentLoaded', () => {
         function bindHoverTrigger(element) {
             if (!element) return;
             element.addEventListener('mouseenter', () => {
+                if (window.innerWidth <= 768) return;
                 stopAutoScrollRight();
                 hoverScrollTimer = setTimeout(() => {
-                    if (swipeIndicator) swipeIndicator.classList.add('visible');
+                    if (swipeIndicator && window.innerWidth > 768) swipeIndicator.classList.add('visible');
                     startAutoScrollRight();
-                }, 15); // 10ms - 20ms activation delay window
+                }, 15);
             });
 
             element.addEventListener('mouseleave', (e) => {
+                if (window.innerWidth <= 768) return;
                 const related = e.relatedTarget;
                 if (related && swipeIndicator && (related === swipeIndicator || swipeIndicator.contains(related) || element.contains(related))) {
                     return;
@@ -361,6 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (swipeIndicator) {
             swipeIndicator.addEventListener('mouseenter', () => {
+                if (window.innerWidth <= 768) return;
                 stopAutoScrollRight();
                 swipeIndicator.classList.add('visible');
                 hoverScrollTimer = setTimeout(() => {

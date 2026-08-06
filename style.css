@@ -1511,6 +1511,10 @@ body {
         min-height: 420px;
     }
 
+    .menu-swipe-indicator {
+        display: none !important;
+    }
+
     .features-grid {
         grid-template-columns: 1fr;
         gap: 20px;
