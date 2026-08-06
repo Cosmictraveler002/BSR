@@ -3,6 +3,78 @@
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Full-Screen Asset Preloader with Progress Tracking ---
+    (function initAppPreloader() {
+        const preloader = document.getElementById('app-preloader');
+        const progressBar = document.getElementById('preloader-progress-bar');
+        const percentText = document.getElementById('preloader-percent');
+
+        if (!preloader) return;
+
+        const urlsToPreload = [
+            'BSR 01 cmyk.png',
+            'https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=2000&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?q=80&w=2000&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1606491956689-2ea866880c84?q=80&w=2000&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=2000&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1589301760014-d929f39ce9b1?q=80&w=2000&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=2000&auto=format&fit=crop'
+        ];
+
+        document.querySelectorAll('img').forEach(img => {
+            if (img.src && !urlsToPreload.includes(img.src)) {
+                urlsToPreload.push(img.src);
+            }
+        });
+
+        let loadedCount = 0;
+        const totalAssets = urlsToPreload.length;
+        let progress = 0;
+
+        function updateProgress(targetPercent) {
+            progress = Math.min(100, Math.max(progress, targetPercent));
+            if (progressBar) progressBar.style.width = `${progress}%`;
+            if (percentText) percentText.textContent = `${Math.round(progress)}%`;
+        }
+
+        const loadPromises = urlsToPreload.map(url => {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = img.onerror = () => {
+                    loadedCount++;
+                    const percent = (loadedCount / totalAssets) * 100;
+                    updateProgress(percent);
+                    resolve();
+                };
+                img.src = url;
+            });
+        });
+
+        const minDisplayDuration = 700;
+
+        Promise.all([
+            Promise.all(loadPromises),
+            new Promise(res => setTimeout(res, minDisplayDuration))
+        ]).then(() => {
+            updateProgress(100);
+            setTimeout(() => {
+                preloader.classList.add('fade-out');
+                setTimeout(() => {
+                    if (document.body.contains(preloader)) preloader.remove();
+                }, 600);
+            }, 200);
+        });
+
+        setTimeout(() => {
+            if (document.body.contains(preloader)) {
+                updateProgress(100);
+                preloader.classList.add('fade-out');
+                setTimeout(() => {
+                    if (document.body.contains(preloader)) preloader.remove();
+                }, 600);
+            }
+        }, 3500);
+    })();
     // --- Mobile Menu Toggle ---
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const closeMenuBtn = document.getElementById('close-menu-btn');
@@ -969,10 +1041,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return pathStr;
     }
 
-    function animateStoryWaveFill() {
-        if (!heritageSection || !storyWavePath) return;
+    let isStoryVisible = false;
+    let storyRafId = null;
 
-        // Smooth automatic wave fill progression (slower fill speed)
+    function animateStoryWaveFill() {
+        if (!heritageSection || !storyWavePath || !isStoryVisible) {
+            storyRafId = null;
+            return;
+        }
+
+        // Smooth automatic wave fill progression
         if (waveFilling && waveFillProgress < 1.0) {
             waveFillProgress += 0.0084;
             if (waveFillProgress >= 1.0) {
@@ -980,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Time progression for free-flowing organic motion (slower morph speed)
+        // Time progression for free-flowing organic motion
         storyWaveTime += 0.014;
 
         // Generate fluid wave path
@@ -994,24 +1072,29 @@ document.addEventListener('DOMContentLoaded', () => {
             heritageSection.classList.remove('wave-active');
         }
 
-        requestAnimationFrame(animateStoryWaveFill);
+        storyRafId = requestAnimationFrame(animateStoryWaveFill);
     }
 
     if (heritageSection && storyWavePath) {
         const storyObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
+                isStoryVisible = entry.isIntersecting;
+                if (isStoryVisible) {
                     waveFilling = true;
+                    if (!storyRafId) storyRafId = requestAnimationFrame(animateStoryWaveFill);
                 } else {
                     waveFilling = false;
                     waveFillProgress = 0;
                     heritageSection.classList.remove('wave-active');
+                    if (storyRafId) {
+                        cancelAnimationFrame(storyRafId);
+                        storyRafId = null;
+                    }
                 }
             });
-        }, { threshold: 0.20 });
+        }, { threshold: 0.10 });
 
         storyObserver.observe(heritageSection);
-        requestAnimationFrame(animateStoryWaveFill);
     }
 
 
@@ -1273,8 +1356,31 @@ document.addEventListener('DOMContentLoaded', () => {
             return true;
         }
 
-        // ── Animation Loop (Frame Rate Independent) ──
+        let isHeroVisible = true;
+        let heroRafId = null;
+
+        const heroObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                isHeroVisible = entry.isIntersecting;
+                if (isHeroVisible && !heroRafId) {
+                    lastFrameTime = performance.now();
+                    heroRafId = requestAnimationFrame(animate);
+                } else if (!isHeroVisible && heroRafId) {
+                    cancelAnimationFrame(heroRafId);
+                    heroRafId = null;
+                }
+            });
+        }, { threshold: 0.05 });
+
+        heroObserver.observe(hero);
+
+        // ── Animation Loop (Frame Rate Independent & Viewport Throttled) ──
         function animate(currentTime) {
+            if (!isHeroVisible) {
+                heroRafId = null;
+                return;
+            }
+
             if (!currentTime) currentTime = performance.now();
             let deltaTime = currentTime - lastFrameTime;
 
@@ -1364,9 +1470,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            requestAnimationFrame(animate);
+            if (isHeroVisible) {
+                heroRafId = requestAnimationFrame(animate);
+            } else {
+                heroRafId = null;
+            }
         }
-        requestAnimationFrame(animate);
+        heroRafId = requestAnimationFrame(animate);
     })();
 
     // ==========================================================================
