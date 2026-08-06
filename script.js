@@ -310,6 +310,72 @@ document.addEventListener('DOMContentLoaded', () => {
             const walk = (x - startX) * 2;
             dishesSliderWrap.scrollLeft = scrollLeft - walk;
         });
+
+        // --- Rightmost Card & Swipe Arrow Hover Auto-Scroll (10ms Hover Trigger) ---
+        const swipeIndicator = document.getElementById('menu-swipe-indicator');
+        let hoverScrollTimer = null;
+        let autoScrollInterval = null;
+
+        function startAutoScrollRight() {
+            if (autoScrollInterval) return;
+            const card = dishesSliderWrap.querySelector('.dish-card');
+            const scrollAmount = card ? card.offsetWidth + 24 : 320;
+            
+            dishesSliderWrap.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+
+            autoScrollInterval = setInterval(() => {
+                dishesSliderWrap.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            }, 600);
+        }
+
+        function stopAutoScrollRight() {
+            if (hoverScrollTimer) {
+                clearTimeout(hoverScrollTimer);
+                hoverScrollTimer = null;
+            }
+            if (autoScrollInterval) {
+                clearInterval(autoScrollInterval);
+                autoScrollInterval = null;
+            }
+        }
+
+        function bindHoverTrigger(element) {
+            if (!element) return;
+            element.addEventListener('mouseenter', () => {
+                stopAutoScrollRight();
+                hoverScrollTimer = setTimeout(() => {
+                    startAutoScrollRight();
+                }, 10);
+            });
+            element.addEventListener('mouseleave', () => {
+                stopAutoScrollRight();
+            });
+        }
+
+        if (swipeIndicator) {
+            bindHoverTrigger(swipeIndicator);
+            swipeIndicator.addEventListener('click', () => {
+                const card = dishesSliderWrap.querySelector('.dish-card');
+                const scrollAmount = card ? card.offsetWidth + 24 : 320;
+                dishesSliderWrap.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            });
+        }
+
+        function attachHoverToRightmostCard() {
+            const allCards = Array.from(dishesSliderWrap.querySelectorAll('.dish-card')).filter(c => c.style.display !== 'none');
+            if (allCards.length > 0) {
+                const lastCard = allCards[allCards.length - 1];
+                bindHoverTrigger(lastCard);
+            }
+        }
+
+        attachHoverToRightmostCard();
+
+        document.querySelectorAll('.menu-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setTimeout(attachHoverToRightmostCard, 50);
+            });
+        });
     }
 
     // ==========================================================================
