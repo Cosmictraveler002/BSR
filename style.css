@@ -842,6 +842,7 @@ body {
 .dishes-grid {
     display: flex;
     gap: 24px;
+    align-items: stretch;
     position: relative;
     z-index: 2;
     width: max-content;
@@ -857,6 +858,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 420px;
     flex: 0 0 300px;
     max-width: 320px;
     scroll-snap-align: start;
@@ -935,11 +937,17 @@ body {
 
 .dish-body {
     padding: 24px;
-    flex: 1;
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     gap: 16px;
+}
+
+.dish-body > div:first-child {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .dish-name {
@@ -1492,12 +1500,15 @@ body {
         flex-wrap: nowrap;
         gap: 16px;
         width: max-content;
+        align-items: stretch;
         transform: none !important;
     }
 
     .dish-card {
         width: 270px;
         flex-shrink: 0;
+        height: 100%;
+        min-height: 420px;
     }
 
     .features-grid {
