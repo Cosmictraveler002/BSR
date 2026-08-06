@@ -1476,23 +1476,28 @@ body {
         display: none !important;
     }
 
-    /* Menu Marquee Section Mobile */
+    /* Menu Cards Mobile View (Manual touch scroll without auto swipe / marquee) */
     .menu-section {
         overflow: hidden;
     }
 
+    .dishes-slider-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 16px;
+    }
+
     .dishes-grid {
-        display: flex !important;
-        flex-wrap: nowrap !important;
-        gap: 16px !important;
-        width: max-content !important;
-        will-change: transform;
-        transition: transform 0.05s ease-out;
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 16px;
+        width: max-content;
+        transform: none !important;
     }
 
     .dish-card {
-        width: 270px !important;
-        flex-shrink: 0 !important;
+        width: 270px;
+        flex-shrink: 0;
     }
 
     .features-grid {

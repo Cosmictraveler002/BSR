@@ -27,7 +27,10 @@ MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_TIME_SECONDS = 300  # 5 minutes lockout
 
 def check_rate_limit(ip_address: str):
-    """Enforces rate limiting on login endpoint per IP address."""
+    """Enforces rate limiting on login endpoint per IP address (bypasses localhost for development)."""
+    if ip_address in ("127.0.0.1", "::1", "localhost"):
+        return
+
     now = datetime.datetime.utcnow()
     cutoff = now - datetime.timedelta(seconds=LOCKOUT_TIME_SECONDS)
     

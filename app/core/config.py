@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"
 
     # Security Configuration
-    # Generate a default secret key if not set in environment
-    SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+    # Stable default secret key if not set in environment (prevents session invalidation on restart)
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "bsr_bengali_restaurant_jwt_secret_key_2026_secure")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8  # 8 hours session duration
     COOKIE_NAME: str = "bsr_admin_session"

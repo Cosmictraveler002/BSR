@@ -924,29 +924,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    // --- Mobile Scroll Marquee for Menu Cards ---
-    const dishesContainer = document.getElementById('dishes-container');
-    let marqueePos = 0;
-    let marqueeVelocity = 0.5;
-    let lastScrollY = window.scrollY;
-    let isMobile = window.innerWidth <= 768;
-
-    window.addEventListener('resize', () => {
-        isMobile = window.innerWidth <= 768;
-        if (!isMobile && dishesContainer) {
-            dishesContainer.style.transform = 'none';
-        }
-    });
-
-    window.addEventListener('scroll', () => {
-        if (!isMobile) return;
-        const currentScrollY = window.scrollY;
-        const delta = currentScrollY - lastScrollY;
-        lastScrollY = currentScrollY;
-
-        // Accelerate when scrolling down, reverse direction when scrolling up
-        marqueeVelocity += delta * 0.18;
-    });
 
     // --- Our Story Section Organic Fluid Wave (Free-Flowing & Constantly Moving) ---
     const heritageSection = document.getElementById('heritage');
@@ -1037,24 +1014,6 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(animateStoryWaveFill);
     }
 
-    function animateMarquee() {
-        if (isMobile && dishesContainer) {
-            marqueeVelocity += (0.6 - marqueeVelocity) * 0.08;
-            marqueePos += marqueeVelocity;
-
-            const maxScroll = dishesContainer.scrollWidth - window.innerWidth + 48;
-            if (maxScroll > 0) {
-                if (marqueePos > maxScroll) {
-                    marqueePos = 0;
-                } else if (marqueePos < 0) {
-                    marqueePos = maxScroll;
-                }
-                dishesContainer.style.transform = `translateX(-${marqueePos}px)`;
-            }
-        }
-        requestAnimationFrame(animateMarquee);
-    }
-    requestAnimationFrame(animateMarquee);
 
     // --- Button Click Reaction (Ripple Effect) ---
     document.querySelectorAll('.btn, .add-to-cart-btn').forEach(button => {
@@ -1454,16 +1413,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 adminLoginScreen.classList.add('hidden');
                 adminDashboardScreen.classList.remove('hidden');
                 renderAdminDashboard();
-            } else if (isLocalLoggedIn) {
-                if (adminUserDisplay) adminUserDisplay.textContent = 'Master Admin';
-                adminLoginScreen.classList.add('hidden');
-                adminDashboardScreen.classList.remove('hidden');
-                renderAdminDashboard();
             } else {
+                // API returned 401 or auth error - invalid session
+                localStorage.removeItem('bsr_admin_logged_in');
                 adminLoginScreen.classList.remove('hidden');
                 adminDashboardScreen.classList.add('hidden');
             }
         } catch (err) {
+            // Network error fallback (e.g. static mode testing without server)
             if (isLocalLoggedIn) {
                 if (adminUserDisplay) adminUserDisplay.textContent = 'Master Admin';
                 adminLoginScreen.classList.add('hidden');
@@ -1570,7 +1527,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     status: o.status
                 }));
             } else if (res.status === 401) {
-                checkAdminSession();
+                localStorage.removeItem('bsr_admin_logged_in');
+                adminLoginScreen.classList.remove('hidden');
+                adminDashboardScreen.classList.add('hidden');
                 return;
             }
         } catch (err) {
