@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>বাঙালির শখের রান্নাঘর - ঐতিহ্যের স্বাদ, আধুনিক ছোঁয়ায়</title>
+    <meta name="description"
+        content="বাঙালির শখের রান্নাঘর - Experience authentic Bengali cuisine crafted with heritage recipes and presented with modern elegance.">
+
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@500;700&family=Montserrat:wght@700;900&family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Serif+Bengali:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
+
+    <!-- Preload Hero Animation Images for instant fluid transitions -->
+    <link rel="preload" as="image"
+        href="https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=2000&auto=format&fit=crop" />
+    <link rel="preload" as="image"
+        href="https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?q=80&w=2000&auto=format&fit=crop" />
+    <link rel="preload" as="image"
+        href="https://images.unsplash.com/photo-1606491956689-2ea866880c84?q=80&w=2000&auto=format&fit=crop" />
+    <link rel="preload" as="image"
+        href="https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=2000&auto=format&fit=crop" />
+    <link rel="preload" as="image"
+        href="https://images.unsplash.com/photo-1589301760014-d929f39ce9b1?q=80&w=2000&auto=format&fit=crop" />
+    <link rel="preload" as="image"
+        href="https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=2000&auto=format&fit=crop" />
+
+    <!-- Pure Vanilla CSS Style File -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Custom Mouse Cursor Elements -->
+    <div id="custom-cursor" class="custom-cursor"></div>
+    <div id="custom-cursor-follower" class="custom-cursor-follower"></div>
+
+    <!-- Site Header & Navigation Bar -->
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="#" class="brand-logo" aria-label="বাঙালির শখের রান্নাঘর Home">
+                <img src="BSR 01 cmyk.png" alt="বাঙালির শখের রান্নাঘর" class="brand-logo-img">
+            </a>
+
+            <nav class="nav-links">
+                <a href="#menu" class="nav-link">Menu</a>
+                <a href="#heritage" class="nav-link">Heritage</a>
+                <a href="#specials" class="nav-link">Chef's Specials</a>
+                <a href="#celebrate" class="nav-link">Events</a>
+                <a href="#contact" class="nav-link">Reservations</a>
+            </nav>
+
+            <div class="header-actions">
+                <button id="orders-history-btn" class="cart-icon-btn" title="View Order History" aria-label="View Order History">
+                    <span class="material-symbols-outlined">receipt_long</span>
+                    <span id="orders-badge" class="cart-badge hidden" style="background-color: var(--color-primary);">0</span>
+                </button>
+
+                <button id="cart-btn" class="cart-icon-btn" aria-label="View Cart">
+                    <span class="material-symbols-outlined">shopping_bag</span>
+                    <span id="cart-badge" class="cart-badge hidden">0</span>
+                </button>
+
+                <button id="open-reserve-btn" class="btn btn-primary">
+                    Book a Table
+                </button>
+
+                <button id="mobile-menu-btn" class="mobile-toggle-btn" aria-label="Open Mobile Menu">
+                    <span class="material-symbols-outlined" style="font-size: 28px;">menu</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Drawer Overlay -->
+    <div id="mobile-menu" class="drawer-backdrop">
+        <div class="drawer-content">
+            <div>
+                <div class="drawer-header">
+                    <a href="#" class="brand-logo" aria-label="বাঙালির শখের রান্নাঘর Home">
+                        <img src="BSR 01 cmyk.png" alt="বাঙালির শখের রান্নাঘর" class="brand-logo-img"
+                            style="height: 38px;">
+                    </a>
+                    <button id="close-menu-btn" class="modal-close-btn">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <nav style="display: flex; flex-direction: column; gap: 20px; padding-top: 24px;">
+                    <a href="#menu" class="mobile-nav-link nav-link" style="font-size: 1.1rem;">Menu</a>
+                    <a href="#heritage" class="mobile-nav-link nav-link" style="font-size: 1.1rem;">Our Heritage</a>
+                    <a href="#specials" class="mobile-nav-link nav-link" style="font-size: 1.1rem;">Chef's Specials</a>
+                    <a href="#celebrate" class="mobile-nav-link nav-link" style="font-size: 1.1rem;">Private Events</a>
+                    <a href="#contact" class="mobile-nav-link nav-link" style="font-size: 1.1rem;">Contact & Hours</a>
+                </nav>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 24px;">
+                <button id="mobile-reserve-btn" class="btn btn-primary" style="width: 100%;">Book a Table</button>
+                <button id="mobile-order-btn" class="btn btn-secondary" style="width: 100%;">Order Online</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Web Content -->
+    <main>
+        <!-- ─── HERO SECTION (FROM HERO.HTML) ─── -->
+        <section class="hero" id="hero">
+
+            <!-- ── BACKGROUND BASE ── -->
+            <div class="hero-base-images" id="heroBaseImages">
+                <div class="hero-base-stitch"
+                    style="background-image: url('https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=2000&auto=format&fit=crop');">
+                </div>
+                <div class="hero-bg-solid" id="heroBgSolid"
+                    style="background-image: url('https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=2000&auto=format&fit=crop');">
+                </div>
+            </div>
+
+            <!-- ── SPOTLIGHT LAYER (Fluid Blob tracking mouse) ── -->
+            <div class="hero-reveal" id="revealLayer">
+                <div class="reveal-img active"
+                    style="background-image: url('https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=2000&auto=format&fit=crop')">
+                </div>
+                <div class="reveal-img"
+                    style="background-image: url('https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?q=80&w=2000&auto=format&fit=crop')">
+                </div>
+                <div class="reveal-img"
+                    style="background-image: url('https://images.unsplash.com/photo-1606491956689-2ea866880c84?q=80&w=2000&auto=format&fit=crop')">
+                </div>
+                <div class="reveal-img"
+                    style="background-image: url('https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=2000&auto=format&fit=crop')">
+                </div>
+                <div class="reveal-img"
+                    style="background-image: url('https://images.unsplash.com/photo-1589301760014-d929f39ce9b1?q=80&w=2000&auto=format&fit=crop')">
+                </div>
+                <div class="reveal-img"
+                    style="background-image: url('https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=2000&auto=format&fit=crop')">
+                </div>
+            </div>
+
+            <!-- ── CLONE LAYER (Detaches from spotlight, expands, and fades) ── -->
+            <div class="hero-reveal" id="cloneLayer">
+                <div class="reveal-img active" id="cloneImg"></div>
+            </div>
+
+            <!-- ── SVG BORDER OVERLAY (Traces the expanding blob) ── -->
+            <svg class="blob-overlay" xmlns="http://www.w3.org/2000/svg">
+                <path id="blobBorder" class="blob-border" d="" />
+            </svg>
+
+            <div class="hero-text" id="heroText">
+                <h1>বাঙালির শখের রান্নাঘর</h1>
+                <p>Authentic Flavors. Modern Passion.</p>
+            </div>
+        </section>
+
+        <!-- Our Story Section -->
+        <section id="heritage" class="story-section">
+            <!-- Dynamic Scroll Wave Background -->
+            <div class="story-wave-container">
+                <svg class="story-wave-svg" viewBox="0 0 1440 600" preserveAspectRatio="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path id="storyWavePath" d="M 0,0 L 0,0 C 480,0 960,0 1440,0 L 1440,0 Z" fill="#200a0d"></path>
+                </svg>
+            </div>
+
+            <div class="container story-grid">
+                <figure class="story-image-wrap">
+                    <div class="story-image-frame">
+                        <img alt="Bengali Culinary Heritage"
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxzAecB9fwBp2lvqA3V0RrWnWv5hWwZaUEaLh6X-yV2GN2MYwhwlHCEojoFj3muz6swV54cWv9zZs_OyUiDmnIFaBmP_PzYByXiCLHI8RUHiPo8oWOQO2zOnyq1B9tRZWKceCmEqU_2TtF_kBqmBpEwCvzFk5fBsPgWzQ1_O4Yl6po_2T3e5q3FDQFIuC0X1GLBI6BXO4LNlwW9x2Cm-UsHVBvEtNbffXcXckGj5ML89Kt69lH7fSWuQ">
+                    </div>
+                    <div class="story-blur-accent"></div>
+                </figure>
+
+                <div>
+                    <span class="section-label">Our Story</span>
+                    <h2 class="story-title">Preserving Heritage Through Every Bite.</h2>
+                    <p class="story-text">
+                        <strong class="font-bengali" style="color: var(--color-primary);">বাঙালির শখের রান্নাঘর</strong>
+                        began with a simple passion: rediscovering forgotten recipes from grandmother's handwritten
+                        journals and presenting them with artisanal culinary elegance.
+                    </p>
+                    <p class="story-text">
+                        Our minimalist ambient space removes unnecessary clutter, allowing the vibrant aroma of mustard,
+                        fresh spices, and ghee to take center stage. Every dish is cooked with love and historical
+                        precision.
+                    </p>
+                    <div style="padding-top: 8px;">
+                        <button id="read-story-btn"
+                            style="font-weight: 600; color: var(--color-primary); display: inline-flex; align-items: center; text-decoration: underline;">
+                            <span>Discover Our Culinary Philosophy</span>
+                            <span class="material-symbols-outlined">chevron_right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section Divider -->
+        <div class="container divider-wrapper">
+            <hr class="section-divider">
+        </div>
+
+        <!-- Curated Menu Section -->
+        <section id="menu" class="menu-section">
+            <div class="menu-bg-backdrop" id="menuBgBackdrop"></div>
+            <div class="menu-bg-overlay" id="menuBgOverlay"></div>
+            <div class="menu-texture-overlay" id="menuTextureOverlay"></div>
+            <div class="container" style="position: relative; z-index: 2;">
+                <div class="menu-header">
+                    <div>
+                        <span class="section-label">Handcrafted Menu</span>
+                        <h2 class="menu-title">Curated Classics</h2>
+                        <p style="color: var(--color-text-muted);">A curated selection of authentic heritage delicacies.
+                        </p>
+                    </div>
+
+                    <div class="menu-filters">
+                        <button class="menu-filter active" data-category="all">All Dishes</button>
+                        <button class="menu-filter" data-category="mains">Main Courses</button>
+                        <button class="menu-filter" data-category="seafood">Seafood</button>
+                        <button class="menu-filter" data-category="sweets">Desserts</button>
+                    </div>
+                </div>
+
+                <!-- Recipe Grid -->
+                <div class="dishes-grid" id="dishes-container">
+                    <!-- Dish 1 -->
+                    <article class="dish-card" data-category="seafood">
+                        <div class="dish-img-wrap">
+                            <img alt="Ilish Bhapa"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSFA1pX6GRqcxJJh6Bkx011tHEwTixp1ypzppoXTlojMrkvkdHPLhU0iYqMAylfeTV1sNRjJ2CgA_4qzx-nE7lUWZSPmnzvofG52prP8oe253FzRJFBKVUPjytJebyaz9hczWhmnW0Ulk-uoIvA-O24_Tjd8DhzHnkhGnDM2SDLBAKP1GbDVFV4cVzLQ53QCt0X17qxHx0T5_jZkcppKi5IIrFwUCxCU4KWNQp8GfpY6DtHEDt0Khfyw">
+                            <span class="dish-badge">Signature</span>
+                        </div>
+                        <div class="dish-body">
+                            <div>
+                                <h3 class="dish-name">ইলিশ ভাপা (Ilish Bhapa)</h3>
+                                <p class="dish-desc">Fresh Hilsa steamed in handcrafted mustard paste and green chilis.
+                                </p>
+                            </div>
+                            <div class="dish-footer">
+                                <span class="dish-price">₹850</span>
+                                <button class="add-to-cart-btn" data-name="Ilish Bhapa" data-price="850">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Dish 2 -->
+                    <article class="dish-card" data-category="mains">
+                        <div class="dish-img-wrap">
+                            <img alt="Kosha Mangsho"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDL1fV3JBcx36gH1LXmW0gnc9ot78QatVFw6djCEPzkLnqTmOowChE6gtKYjTOHcgXgix891GgDvk6mP7KEwk3MriAYGSfEat-X4jc1FhSz_1L3gFTOCz5Y9zjFbaAbKRKPEiSPkWfHZN7s_IH2yhs2wB7yEZ_37m4-GXuthEnvbsU_vtsT5oy9FI3MPLTywmhQJ-200VMKTO0t93FI9qZOYOGHGRTMkiANjOaFxE7r-bfpIFDrFLdj3Q">
+                            <span class="dish-badge bg-primary">Heritage</span>
+                        </div>
+                        <div class="dish-body">
+                            <div>
+                                <h3 class="dish-name">কষা মাংস (Kosha Mangsho)</h3>
+                                <p class="dish-desc">Slow-cooked dark spiced tender mutton gravy in traditional spices.
+                                </p>
+                            </div>
+                            <div class="dish-footer">
+                                <span class="dish-price">₹750</span>
+                                <button class="add-to-cart-btn" data-name="Kosha Mangsho" data-price="750">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Dish 3 -->
+                    <article class="dish-card" data-category="seafood">
+                        <div class="dish-img-wrap">
+                            <img alt="Chingri Malai Curry"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhHqDN9zW71PcsXEQ3DqtEnhKScjrZ8s-psQR8ygF531YEaNaROxmRwyDSwGJkNUcZhOzDdCmD5K3Mg9m2F3NTFs1etWEoXsCu45K8-B5KJLfMXdUBrKkkF-E7Va1eqWH0ni-P5MxDdAypuPbP6GOS4iWodjbgFq1HgI3MbOdTtCHbXttDRnjCWP2em3Y6PO8vYFYMQ3UTV-3KH1sLMmM-Sazdu1k8He4SKrtSUWYMuqbsRdqQfzdMHg">
+                            <span class="dish-badge">Popular</span>
+                        </div>
+                        <div class="dish-body">
+                            <div>
+                                <h3 class="dish-name">চিংড়ি মালাই (Chingri Malai)</h3>
+                                <p class="dish-desc">Jumbo prawns simmered in rich fragrant coconut cream and whole
+                                    spices.</p>
+                            </div>
+                            <div class="dish-footer">
+                                <span class="dish-price">₹650</span>
+                                <button class="add-to-cart-btn" data-name="Chingri Malai" data-price="650">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Dish 4 -->
+                    <article class="dish-card" data-category="sweets">
+                        <div class="dish-img-wrap">
+                            <img alt="Artisanal Mishti"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuACUjY09R-a16dT8gVW0A6oq_dbWFqNpRvSiWeBfXdTwGgecmSYRAWJdG8dRUoV1ch96cPANCskkq5WWMYZf0-klYU5z3s-vsFZ3IFE-i8eUSr0rME1R_niq2F3mm8nfbJi6peWi9q17dsXmb4ZEfaZvuv73ysLeP7J0Hx44cwJTBHHPyh0FfGRSyl-DwrpVD11guIg_LBRJijXIXwvb43VrveITpepBir89YQv0Sq_T2ApNnuueLHpNQ">
+                            <span class="dish-badge bg-primary">Sweetmeat</span>
+                        </div>
+                        <div class="dish-body">
+                            <div>
+                                <h3 class="dish-name">অভিজাত মিষ্টি (Artisanal Mishti)</h3>
+                                <p class="dish-desc">Assorted artisanal sweetmeats including Nolen Gur Sandesh &
+                                    Rosogolla.</p>
+                            </div>
+                            <div class="dish-footer">
+                                <span class="dish-price">₹350</span>
+                                <button class="add-to-cart-btn" data-name="Artisanal Mishti" data-price="350">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+                                    Add
+                                </button>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="specials" class="features-section">
+            <div class="container">
+                <div style="text-align: center; max-width: 600px; margin: 0 auto 48px;">
+                    <span class="section-label">Why Dine With Us</span>
+                    <h2 class="font-bengali" style="font-size: 2.25rem; font-weight: 700;">Our Hallmarks</h2>
+                </div>
+
+                <div class="features-grid">
+                    <article class="feature-card">
+                        <div class="feature-icon-box">
+                            <span class="material-symbols-outlined" style="font-size: 32px;">eco</span>
+                        </div>
+                        <h3 class="feature-title">খাঁটি উপকরণ</h3>
+                        <p class="feature-desc">Ingredients sourced directly from regional Bengal farmers, ensuring pure
+                            unadulterated spices and farm-fresh produce.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-icon-box">
+                            <span class="material-symbols-outlined" style="font-size: 32px;">history_edu</span>
+                        </div>
+                        <h3 class="feature-title">ঐতিহ্যবাহী রেসিপি</h3>
+                        <p class="feature-desc">Ancestral recipes preserved through generations, maintaining authentic
+                            slow-cooking techniques and heritage proportions.</p>
+                    </article>
+
+                    <article class="feature-card">
+                        <div class="feature-icon-box">
+                            <span class="material-symbols-outlined" style="font-size: 32px;">restaurant</span>
+                        </div>
+                        <h3 class="feature-title">চমৎকার পরিবেশ</h3>
+                        <p class="feature-desc">A serene dining space blending minimalist modern architecture with soft
+                            cultural nostalgia for an unforgettable meal.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- Private Events Section -->
+        <section id="celebrate" class="events-section">
+            <div class="container events-grid">
+                <div>
+                    <span class="section-label">Private Dining & Events</span>
+                    <h2 class="font-bengali" style="font-size: 2.25rem; font-weight: 700; margin-bottom: 16px;">
+                        Celebrate Your Special Moments With Us</h2>
+                    <p
+                        style="color: var(--color-text-muted); font-size: 1.05rem; line-height: 1.7; margin-bottom: 24px;">
+                        From intimate family gatherings to festive celebrations, our heritage-inspired sanctuary
+                        provides the perfect backdrop. We offer bespoke banquet menus curated specifically for your
+                        guests.
+                    </p>
+                    <button id="event-inquire-btn" class="btn btn-primary">Inquire For Private Event</button>
+                </div>
+
+                <figure class="hero-image-card" style="aspect-ratio: 16/9;">
+                    <img alt="Private Dining Event Hall"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5lz1_sccNAlFyx65siLFohK0TFyagoCJO9chG1k2AD3oqJSDUTAHW2OCZPE_OwOmZQ4gLsoYk74zmpd-d2k6d966C-o5D-VoZVrJNspiYynkhCmBC-kPpcXw_gmwPW0K05SGSygKxXpLVNMU45q9joUhSAAhn3M6QxGGh3OQORKESSvSBjgp1YTCIoYT4w9i-vi8boK9k-Wu6ItxzR5w65zHIgq-TyN1F-8MygsnPo_4kb_fBP6l9dw">
+                </figure>
+            </div>
+        </section>
+
+        <!-- Contact & Map Section -->
+        <section id="contact" class="contact-section">
+            <div class="container">
+                <h2 class="font-bengali contact-title">Find Us</h2>
+
+                <div class="contact-grid">
+                    <div class="map-wrapper">
+                        <iframe
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3674.3214541484055!2d88.4342!3d22.9772!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f89551c6c646b9%3A0xb695b28aa1a7bb02!2sBlock%20B%2C%20Kalyani%2C%20West%20Bengal%20741235!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+                            loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Restaurant Map Location">
+                        </iframe>
+                    </div>
+
+                    <address class="contact-card">
+                        <div class="contact-item">
+                            <h4>Address</h4>
+                            <p>B1/430, near Picnic Garden Bus Stand<br>B1, Block B, Kalyani, West Bengal 741235</p>
+                        </div>
+                        <div class="contact-item">
+                            <h4>Contact Details</h4>
+                            <p>+91 33 2456 7890<br>hello@shokher-rannaghor.com</p>
+                        </div>
+                        <div class="contact-item">
+                            <h4>Opening Hours</h4>
+                            <div>
+                                <div class="hours-row">
+                                    <span style="color: var(--color-text-muted);">Monday - Thursday</span>
+                                    <strong>12:00 PM - 10:30 PM</strong>
+                                </div>
+                                <div class="hours-row">
+                                    <span style="color: var(--color-text-muted);">Friday - Sunday</span>
+                                    <strong>12:00 PM - 11:30 PM</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </address>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Table Reservation Modal -->
+    <div id="reservation-modal" class="modal-backdrop">
+        <div class="modal-box">
+            <button id="close-modal-btn" class="modal-close-btn">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+
+            <div style="margin-bottom: 24px;">
+                <span class="section-label">Table Booking</span>
+                <h3 class="font-bengali" style="font-size: 1.5rem; font-weight: 700; margin-top: 4px;">Book Your
+                    Culinary Experience</h3>
+            </div>
+
+            <form id="reservation-form">
+                <div class="form-group">
+                    <label class="form-label">Booking Category</label>
+                    <select id="res-type" class="form-select">
+                        <option value="Table Booking">Table Booking (খাবার টেবিল বুকিং)</option>
+                        <option value="Private Event">Private Event / Banquet Inquiry (ব্যক্তিগত অনুষ্ঠান)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-top: 12px;">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" id="res-name" required placeholder="Enter your full name" class="form-input">
+                </div>
+
+                <div class="form-row" style="margin-top: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Phone Number *</label>
+                        <input type="tel" id="res-phone" required placeholder="+91 98765 43210" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Guests Count *</label>
+                        <select id="res-guests" class="form-select">
+                            <option value="2">2 Guests</option>
+                            <option value="4">4 Guests</option>
+                            <option value="6">6 Guests</option>
+                            <option value="10">10+ Guests (Private Event)</option>
+                            <option value="25">25+ Guests (Banquet Hall)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row" style="margin-top: 12px;">
+                    <div class="form-group">
+                        <label class="form-label">Date *</label>
+                        <input type="date" id="res-date" required class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Time Slot *</label>
+                        <select id="res-time" class="form-select">
+                            <option value="12:30 PM (Lunch)">12:30 PM (Lunch)</option>
+                            <option value="02:00 PM (Lunch)">02:00 PM (Lunch)</option>
+                            <option value="07:30 PM (Dinner)">07:30 PM (Dinner)</option>
+                            <option value="09:00 PM (Dinner)">09:00 PM (Dinner)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 12px;">
+                    <label class="form-label">Special Request / Event Notes</label>
+                    <input type="text" id="res-requests" placeholder="e.g. Birthday setup, private hall, dietary notes" class="form-input">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
+                    Confirm Reservation Request
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cart Drawer -->
+    <div id="cart-drawer" class="drawer-backdrop">
+        <div class="drawer-content">
+            <div>
+                <div class="drawer-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-outlined"
+                            style="color: var(--color-secondary);">shopping_bag</span>
+                        <h3 class="font-bengali" style="font-size: 1.25rem; font-weight: 700;">Your Order Cart</h3>
+                    </div>
+                    <button id="close-cart-btn" class="modal-close-btn">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <div id="cart-items" class="drawer-body" style="padding-top: 16px;">
+                    <p id="empty-cart-msg" style="color: var(--color-text-muted); text-align: center; padding: 32px 0;">
+                        Your cart is currently empty.</p>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--color-border-subtle); padding-top: 16px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--color-text-muted); margin-bottom: 6px;">
+                    <span>Subtotal:</span>
+                    <span id="cart-subtotal-val">₹0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 700; margin-bottom: 16px;">
+                    <span>Total Amount:</span>
+                    <span id="cart-total" style="color: var(--color-secondary);">₹0</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="clear-cart-btn" class="btn btn-outline" style="flex: 1; padding: 10px; font-size: 0.8rem;">Clear</button>
+                    <button id="checkout-btn" class="btn btn-secondary" style="flex: 2;">Proceed to Checkout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Checkout System Page Modal -->
+    <div id="checkout-modal" class="modal-backdrop">
+        <div class="modal-box checkout-modal-box">
+            <button id="close-checkout-btn" class="modal-close-btn">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+
+            <div style="margin-bottom: 20px;">
+                <span class="section-label">Secure Checkout System</span>
+                <h3 class="font-bengali" style="font-size: 1.6rem; font-weight: 700; margin-top: 4px;">Complete Your Order</h3>
+            </div>
+
+            <div class="checkout-grid">
+                <!-- Left Column: Customer & Delivery Information Form -->
+                <form id="checkout-form" class="checkout-form">
+                    <h4 class="checkout-section-title"><span class="material-symbols-outlined">person</span> Customer Information</h4>
+
+                    <div class="form-group">
+                        <label class="form-label">Full Name *</label>
+                        <input type="text" id="chk-name" required placeholder="e.g. Anirban Roy" class="form-input">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Phone Number *</label>
+                            <input type="tel" id="chk-phone" required placeholder="+91 98765 43210" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" id="chk-email" placeholder="name@example.com" class="form-input">
+                        </div>
+                    </div>
+
+                    <h4 class="checkout-section-title" style="margin-top: 20px;"><span class="material-symbols-outlined">local_shipping</span> Order Type & Address</h4>
+                    
+                    <div class="form-group">
+                        <div class="order-type-selector">
+                            <label class="radio-card">
+                                <input type="radio" name="order-type" value="Delivery" checked>
+                                <span class="material-symbols-outlined">delivery_dining</span>
+                                <span>Home Delivery</span>
+                            </label>
+                            <label class="radio-card">
+                                <input type="radio" name="order-type" value="Dine-In">
+                                <span class="material-symbols-outlined">restaurant</span>
+                                <span>Dine-In Table</span>
+                            </label>
+                            <label class="radio-card">
+                                <input type="radio" name="order-type" value="Takeaway">
+                                <span class="material-symbols-outlined">shopping_bag</span>
+                                <span>Takeaway</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" id="chk-address-label">Delivery Address / Table No. *</label>
+                        <input type="text" id="chk-address" required placeholder="Enter full delivery address in Kalyani or Table No." class="form-input">
+                    </div>
+
+                    <h4 class="checkout-section-title" style="margin-top: 20px;"><span class="material-symbols-outlined">payments</span> Select Payment Method</h4>
+                    <div class="payment-options">
+                        <label class="payment-card">
+                            <input type="radio" name="payment-method" value="UPI / QR Code" checked>
+                            <span class="material-symbols-outlined" style="color: #16a34a;">qr_code_scanner</span>
+                            <div class="payment-info">
+                                <strong>UPI / GPay / PhonePe</strong>
+                                <span>Instant scan & pay</span>
+                            </div>
+                        </label>
+                        <label class="payment-card">
+                            <input type="radio" name="payment-method" value="Credit / Debit Card">
+                            <span class="material-symbols-outlined" style="color: #2563eb;">credit_card</span>
+                            <div class="payment-info">
+                                <strong>Credit / Debit Card</strong>
+                                <span>Visa, MasterCard, RuPay</span>
+                            </div>
+                        </label>
+                        <label class="payment-card">
+                            <input type="radio" name="payment-method" value="Cash on Delivery">
+                            <span class="material-symbols-outlined" style="color: var(--color-secondary);">payments</span>
+                            <div class="payment-info">
+                                <strong>Cash / Pay at Counter</strong>
+                                <span>Pay cash upon delivery</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-secondary" style="width: 100%; margin-top: 24px; padding: 14px; font-size: 1rem; font-weight: 700;">
+                        <span class="material-symbols-outlined">lock</span> Place Order & Save to Database
+                    </button>
+                </form>
+
+                <!-- Right Column: Order Summary & Coupon -->
+                <div class="checkout-summary-box">
+                    <h4 class="checkout-section-title"><span class="material-symbols-outlined">shopping_cart</span> Order Summary</h4>
+                    <div id="checkout-item-list" class="checkout-item-list"></div>
+
+                    <!-- Promo Code Box -->
+                    <div class="coupon-box" style="margin-top: 20px;">
+                        <label class="form-label">Apply Promo Coupon</label>
+                        <div class="coupon-input-wrap">
+                            <input type="text" id="coupon-input" placeholder="e.g. BENGAL10" class="form-input" style="text-transform: uppercase;">
+                            <button id="apply-coupon-btn" class="btn btn-primary" type="button" style="padding: 8px 16px; font-size: 0.8rem;">Apply</button>
+                        </div>
+                        <div id="coupon-message" class="coupon-msg hidden"></div>
+                    </div>
+
+                    <!-- Price Calculations -->
+                    <div class="bill-details" style="margin-top: 20px;">
+                        <div class="bill-row">
+                            <span>Subtotal</span>
+                            <span id="chk-subtotal">₹0</span>
+                        </div>
+                        <div class="bill-row">
+                            <span>Taxes & GST (5%)</span>
+                            <span id="chk-tax">₹0</span>
+                        </div>
+                        <div class="bill-row">
+                            <span>Packaging & Delivery</span>
+                            <span id="chk-delivery">₹40</span>
+                        </div>
+                        <div class="bill-row discount-row hidden" id="discount-container">
+                            <span>Promo Discount</span>
+                            <span id="chk-discount" style="color: #16a34a; font-weight: 700;">-₹0</span>
+                        </div>
+                        <hr style="border: none; border-top: 1px solid var(--color-border-subtle); margin: 12px 0;">
+                        <div class="bill-row total-row">
+                            <strong>Total Amount</strong>
+                            <strong id="chk-final-total" style="color: var(--color-secondary); font-size: 1.3rem;">₹0</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Digital Receipt & Order Confirmation Modal -->
+    <div id="receipt-modal" class="modal-backdrop">
+        <div class="modal-box" style="max-width: 580px; padding: 32px;">
+            <button id="close-receipt-btn" class="modal-close-btn">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div class="success-icon-badge">
+                    <span class="material-symbols-outlined" style="font-size: 40px; color: #16a34a;">check_circle</span>
+                </div>
+                <span class="section-label" style="background-color: rgba(22, 163, 74, 0.12); color: #16a34a;">Saved in Database</span>
+                <h3 class="font-bengali" style="font-size: 1.6rem; font-weight: 700; margin-top: 6px;">Order Confirmed!</h3>
+                <p style="color: var(--color-text-muted); font-size: 0.85rem;">Your order has been recorded in the system.</p>
+            </div>
+
+            <!-- Order Status Progress Bar -->
+            <div class="order-tracker">
+                <div class="tracker-step completed">
+                    <span class="step-dot"></span>
+                    <span>Order Placed</span>
+                </div>
+                <div class="tracker-step active">
+                    <span class="step-dot"></span>
+                    <span>Kitchen Prep</span>
+                </div>
+                <div class="tracker-step">
+                    <span class="step-dot"></span>
+                    <span>Ready</span>
+                </div>
+            </div>
+
+            <div id="receipt-details" class="receipt-card"></div>
+
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button id="print-receipt-btn" class="btn btn-outline" style="flex: 1; padding: 10px; font-size: 0.85rem;">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">print</span> Print Receipt
+                </button>
+                <button id="view-orders-btn" class="btn btn-secondary" style="flex: 1; padding: 10px; font-size: 0.85rem;">
+                    View Database Orders
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order History Database Modal -->
+    <div id="history-modal" class="modal-backdrop">
+        <div class="modal-box" style="max-width: 650px; max-height: 85vh; overflow-y: auto; padding: 32px;">
+            <button id="close-history-btn" class="modal-close-btn">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <div style="margin-bottom: 20px;">
+                <span class="section-label">Database Collection</span>
+                <h3 class="font-bengali" style="font-size: 1.6rem; font-weight: 700; margin-top: 4px;">My Order Database</h3>
+            </div>
+            <div id="history-list" class="history-list"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast-notification">
+        <span class="material-symbols-outlined" style="color: var(--color-secondary);">check_circle</span>
+        <span id="toast-message">Item added to cart!</span>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div id="privacy-modal" class="modal-backdrop">
+        <div class="modal-box" style="max-width: 650px; max-height: 85vh; overflow-y: auto;">
+            <button id="close-privacy-btn" class="modal-close-btn">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <div style="margin-bottom: 20px;">
+                <span class="section-label">Legal Information</span>
+                <h3 class="font-bengali" style="font-size: 1.6rem; font-weight: 700; margin-top: 4px;">Privacy Policy
+                    (গোপনীয়তা নীতি)</h3>
+            </div>
+            <div
+                style="font-size: 0.9rem; color: var(--color-text-muted); line-height: 1.7; display: flex; flex-direction: column; gap: 16px;">
+                <p>Welcome to <strong>বাঙালির শখের রান্নাঘর</strong>. We value your trust and are committed to
+                    protecting your personal privacy when dining with us or visiting our digital platforms.</p>
+
+                <div>
+                    <h4 style="color: var(--color-primary); font-weight: 700; margin-bottom: 4px;">1. Information We
+                        Collect</h4>
+                    <p>When you book a table, place an online order, or register for private dining events, we collect
+                        essential details such as your name, phone number, email address, date, and party size to
+                        fulfill your reservation.</p>
+                </div>
+
+                <div>
+                    <h4 style="color: var(--color-primary); font-weight: 700; margin-bottom: 4px;">2. Use of Information
+                    </h4>
+                    <p>Your details are used solely to confirm restaurant reservations, communicate order statuses,
+                        provide customer support, and enhance your culinary dining experience at our Kalyani location.
+                    </p>
+                </div>
+
+                <div>
+                    <h4 style="color: var(--color-primary); font-weight: 700; margin-bottom: 4px;">3. Data Protection &
+                        Confidentiality</h4>
+                    <p>We implement strict security measures to ensure your personal data remains safe. We do not sell,
+                        trade, or share your private information with third parties under any circumstances.</p>
+                </div>
+
+                <div>
+                    <h4 style="color: var(--color-primary); font-weight: 700; margin-bottom: 4px;">4. Contact Us</h4>
+                    <p>If you have any questions regarding our privacy practices, feel free to contact us at
+                        <strong>hello@shokher-rannaghor.com</strong> or call <strong>+91 33 2456 7890</strong>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms of Service Modal -->
+    <div id="terms-modal" class="modal-backdrop">
+        <div class="modal-box" style="max-width: 650px; max-height: 85vh; overflow-y: auto;">
+            <button id="close-terms-btn" class="modal-close-btn">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <div style="margin-bottom: 20px;">
+                <span class="section-label">Legal Information</span>
+                <h3 class="font-bengali" style="font-size: 1.6rem; font-weight: 700; margin-top: 4px;">Terms of Service
+                    (সেবার শর্তাবলী)</h3>
+            </div>
+            <div
+                style="font-size: 0.9rem; color: var(--color-text-muted); line-height: 1.7; display: flex; flex-direction: column; gap: 16px;">
+                <p>By accessing or using the services of <strong>বাঙালির শখের রান্নাঘর</strong>, you agree to comply
+                    with the following terms and guidelines.</p>
+
+                <div>
+                    <h4 style="color: var(--color-primary); font-weight: 700; margin-bottom: 4px;">1. Reservations &
+                        Table Holding</h4>
+                    <p>Table reservations are held for 15 minutes past the scheduled arrival time. If your party is
+                        delayed, please inform us promptly to maintain your table status.</p>
+                </div>
+
+                <div>
+                    <h4 style="color: var(--color-primary); font-weight: 700; margin-bottom: 4px;">2. Pricing & Taxes
+                    </h4>
+                    <p>All prices listed on our heritage menu are in Indian Rupees (INR) and are subject to applicable
+                        GST and local taxes. Prices may vary slightly during special festival seasons.</p>
+                </div>
+
+                <div>
+                    <h4 style="color: var(--color-primary); font-weight: 700; margin-bottom: 4px;">3. Private Events &
+                        Cancellations</h4>
+                    <p>Private event hall bookings require advance confirmation. Banquet cancellations made at least 48
+                        hours prior will receive a full refund of deposit fees.</p>
+                </div>
+
+                <div>
+                    <h4 style="color: var(--color-primary); font-weight: 700; margin-bottom: 4px;">4. Authentic Heritage
+                        Quality</h4>
+                    <p>Every dish is handcrafted using traditional techniques. If you have specific dietary allergies,
+                        kindly inform our service staff prior to ordering.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Site Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top">
+                <div>
+                    <h3 class="font-bengali" style="font-size: 1.5rem; font-weight: 700;">বাঙালির শখের রান্নাঘর</h3>
+                    <p style="font-size: 0.8rem; opacity: 0.75; margin-top: 4px;">Preserving Heritage Culinary Art
+                        Through Every Dish.</p>
+                </div>
+
+                <div class="social-links">
+                    <a href="#" class="social-icon"><span class="material-symbols-outlined"
+                            style="font-size: 20px;">photo_camera</span></a>
+                    <a href="#" class="social-icon"><span class="material-symbols-outlined"
+                            style="font-size: 20px;">forum</span></a>
+                    <a href="#" class="social-icon"><span class="material-symbols-outlined"
+                            style="font-size: 20px;">mail</span></a>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>© 2026 বাঙালির শখের রান্নাঘর. All Rights Reserved. • Created by <a href="https://kalakritico.in"
+                        target="_blank" rel="noopener noreferrer" class="created-by-link">kalakritico</a></p>
+                <div style="display: flex; gap: 24px; align-items: center;">
+                    <button id="open-privacy-btn" style="opacity: 0.8; color: #ffffff; cursor: pointer;">Privacy
+                        Policy</button>
+                    <button id="open-terms-btn" style="opacity: 0.8; color: #ffffff; cursor: pointer;">Terms of
+                        Service</button>
+                    <a href="admin.html" style="opacity: 0.8; color: #ffffff; font-weight: 600;">🔒 Admin Portal</a>
+                    <a href="#contact" style="opacity: 0.8;">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Pure Vanilla JS File -->
+    <script src="script.js"></script>
+</body>
+
+</html>

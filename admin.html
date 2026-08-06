@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard & Orders Panel - বাঙালির শখের রান্নাঘর</title>
+    <meta name="description" content="Admin order management panel for বাঙালির শখের রান্নাঘর.">
+
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@500;700&family=Montserrat:wght@700;900&family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Serif+Bengali:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
+
+    <!-- Pure Vanilla CSS Style File -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="admin-page-body">
+    <!-- Custom Mouse Cursor Elements -->
+    <div id="custom-cursor" class="custom-cursor"></div>
+    <div id="custom-cursor-follower" class="custom-cursor-follower"></div>
+
+    <!-- Admin Login Gate View (Shown if not logged in) -->
+    <div id="admin-login-screen" class="admin-login-overlay">
+        <div class="admin-login-card">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <img src="BSR 01 cmyk.png" alt="বাঙালির শখের রান্নাঘর" style="height: 48px; margin-bottom: 12px;">
+                <span class="section-label">Restricted Portal</span>
+                <h2 class="font-bengali"
+                    style="font-size: 1.6rem; font-weight: 700; color: var(--color-primary); margin-top: 4px;">
+                    Admin Panel Login
+                </h2>
+                <p style="font-size: 0.85rem; color: var(--color-text-muted);">Enter administrative credentials to
+                    manage restaurant orders.</p>
+            </div>
+
+            <form id="admin-login-form">
+                <div id="admin-login-error" class="coupon-msg error hidden"
+                    style="margin-bottom: 14px; text-align: center;"></div>
+
+                <div class="form-group">
+                    <label class="form-label">Admin Username</label>
+                    <input type="text" id="admin-username" required placeholder="Default: admin" class="form-input">
+                </div>
+
+                <div class="form-group" style="margin-top: 14px;">
+                    <label class="form-label">Admin Password</label>
+                    <input type="password" id="admin-password" required placeholder="Default: bsr@admin2026"
+                        class="form-input">
+                </div>
+
+                <button type="submit" class="btn btn-secondary"
+                    style="width: 100%; margin-top: 24px; padding: 12px; font-size: 1rem; font-weight: 700;">
+                    <span class="material-symbols-outlined">lock_open</span> Access Admin Portal
+                </button>
+            </form>
+
+            <div style="margin-top: 20px; text-align: center;">
+                <a href="index.html"
+                    style="font-size: 0.85rem; color: var(--color-secondary); text-decoration: underline;">← Return to
+                    Main Website</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard Main View (Hidden until authenticated) -->
+    <div id="admin-dashboard-screen" class="hidden">
+
+        <!-- Admin Site Header -->
+        <header class="site-header" style="background-color: var(--color-primary); color: #ffffff;">
+            <div class="container header-inner">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <a href="index.html" class="brand-logo" aria-label="Home">
+                        <img src="BSR 01 cmyk.png" alt="বাঙালির শখের রান্নাঘর" class="brand-logo-img"
+                            style="filter: brightness(0) invert(1);">
+                    </a>
+                    <span class="status-badge"
+                        style="background-color: rgba(255,255,255,0.2); color: #ffffff; font-size: 0.75rem;">Admin
+                        Portal</span>
+                </div>
+
+                <div class="header-actions" style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 0.85rem; opacity: 0.9; display: flex; align-items: center; gap: 4px;">
+                        <span class="material-symbols-outlined"
+                            style="font-size: 16px; color: #4ade80;">verified_user</span>
+                        <span>Session: <strong id="admin-user-display">Master Admin</strong></span>
+                    </span>
+                    <button id="admin-res-btn" class="btn btn-outline"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.4); color: #ffffff;"
+                        title="View Table Reservations">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">event_seat</span> Reservations
+                    </button>
+                    <button id="admin-audit-btn" class="btn btn-outline"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.4); color: #ffffff;"
+                        title="View Security Audit Logs">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">shield_lock</span> Audit Logs
+                    </button>
+                    <button id="admin-chpw-btn" class="btn btn-outline"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.4); color: #ffffff;"
+                        title="Change Admin Password">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">key</span> Password
+                    </button>
+                    <button id="admin-logout-btn" class="btn btn-outline"
+                        style="padding: 6px 12px; font-size: 0.8rem; border-color: #fca5a5; color: #fca5a5;">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">logout</span> Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Admin Content Area -->
+        <main style="padding: 32px 0 80px;">
+            <div class="container">
+
+                <!-- Metrics Bar -->
+                <div class="admin-metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="metric-card">
+                        <div class="metric-icon"
+                            style="background-color: rgba(187, 0, 36, 0.1); color: var(--color-secondary);">
+                            <span class="material-symbols-outlined">receipt_long</span>
+                        </div>
+                        <div>
+                            <span class="metric-label">Total Orders</span>
+                            <h3 id="metric-total-orders" class="metric-value">0</h3>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background-color: rgba(22, 163, 74, 0.1); color: #16a34a;">
+                            <span class="material-symbols-outlined">payments</span>
+                        </div>
+                        <div>
+                            <span class="metric-label">Total Revenue</span>
+                            <h3 id="metric-total-revenue" class="metric-value">₹0</h3>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background-color: rgba(234, 88, 12, 0.1); color: #ea580c;">
+                            <span class="material-symbols-outlined">cooking</span>
+                        </div>
+                        <div>
+                            <span class="metric-label">Kitchen Active</span>
+                            <h3 id="metric-active-orders" class="metric-value">0</h3>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background-color: rgba(37, 99, 235, 0.1); color: #2563eb;">
+                            <span class="material-symbols-outlined">verified</span>
+                        </div>
+                        <div>
+                            <span class="metric-label">Completed Orders</span>
+                            <h3 id="metric-completed-orders" class="metric-value">0</h3>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="background-color: rgba(147, 51, 234, 0.1); color: #9333ea;">
+                            <span class="material-symbols-outlined">event_seat</span>
+                        </div>
+                        <div>
+                            <span class="metric-label">Bookings & Events</span>
+                            <h3 id="metric-reservations-count" class="metric-value">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Section Tabs -->
+                <div class="admin-tab-bar" style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid var(--color-border-subtle); padding-bottom: 8px;">
+                    <button id="admin-tab-orders" class="admin-tab-btn active">
+                        <span class="material-symbols-outlined">receipt_long</span> Food Orders Management
+                    </button>
+                    <button id="admin-tab-reservations" class="admin-tab-btn">
+                        <span class="material-symbols-outlined">event_seat</span> Table Bookings & Private Events
+                    </button>
+                    <button id="admin-tab-audit" class="admin-tab-btn">
+                        <span class="material-symbols-outlined">shield_lock</span> Security Audit Trail
+                    </button>
+                </div>
+
+                <!-- Search & Filters Toolbar -->
+                <div class="admin-toolbar" id="admin-orders-toolbar">
+                    <div class="search-box-wrap">
+                        <span class="material-symbols-outlined" style="color: var(--color-text-muted);">search</span>
+                        <input type="text" id="admin-search-input"
+                            placeholder="Search by Order ID, Customer Name, or Phone..." class="form-input"
+                            style="padding-left: 38px;">
+                    </div>
+
+                    <div class="filter-controls">
+                        <select id="admin-status-filter" class="form-input" style="width: auto; cursor: pointer;">
+                            <option value="ALL">All Statuses</option>
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Kitchen Prep">Kitchen Prep</option>
+                            <option value="Out for Delivery">Out for Delivery</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+
+                        <select id="admin-type-filter" class="form-input" style="width: auto; cursor: pointer;">
+                            <option value="ALL">All Order Types</option>
+                            <option value="Delivery">Home Delivery</option>
+                            <option value="Dine-In">Dine-In Table</option>
+                            <option value="Takeaway">Takeaway</option>
+                        </select>
+
+                        <button id="admin-refresh-btn" class="btn btn-outline" style="padding: 10px 16px;"
+                            title="Refresh Database">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">refresh</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Panel 1: Food Orders Section -->
+                <div id="panel-orders-view" class="admin-orders-box">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 class="font-bengali"
+                            style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin: 0;">
+                            Received Orders Collection (<span id="admin-filtered-count">0</span>)
+                        </h3>
+
+                        <button id="admin-clear-db-btn" class="btn btn-outline"
+                            style="padding: 6px 14px; font-size: 0.75rem; color: #dc2626; border-color: #fca5a5;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">delete_forever</span> Wipe
+                            Test Database
+                        </button>
+                    </div>
+
+                    <div id="admin-orders-list" class="admin-orders-container">
+                        <!-- Dynamically populated orders -->
+                    </div>
+                </div>
+
+                <!-- Tab Panel 2: Table Bookings & Private Events Section -->
+                <div id="panel-reservations-view" class="admin-orders-box hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 class="font-bengali" style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" style="color: var(--color-secondary);">event_seat</span>
+                            Table Bookings & Private Dining Event Inquiries
+                        </h3>
+                        <button id="admin-refresh-res-btn" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">refresh</span> Refresh
+                        </button>
+                    </div>
+                    <div id="inline-reservations-content">
+                        Loading reservations & events...
+                    </div>
+                </div>
+
+                <!-- Tab Panel 3: Security Audit Log Section -->
+                <div id="panel-audit-view" class="admin-orders-box hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 class="font-bengali" style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" style="color: var(--color-secondary);">shield_lock</span>
+                            Security System Audit Trail
+                        </h3>
+                        <button id="admin-refresh-audit-btn" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">refresh</span> Refresh Logs
+                        </button>
+                    </div>
+                    <div id="inline-audit-content" style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; background: #0f172a; color: #38bdf8; padding: 20px; border-radius: 10px; line-height: 1.8;">
+                        Loading security audit log entries...
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="order-details-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 840px; width: 92%; max-height: 90vh; overflow-y: auto;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 16px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="material-symbols-outlined"
+                        style="font-size: 28px; color: var(--color-secondary);">receipt_long</span>
+                    <div>
+                        <h3 class="font-bengali"
+                            style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin: 0;"
+                            id="modal-order-id-title">
+                            Order Details
+                        </h3>
+                        <span style="font-size: 0.8rem; color: var(--color-text-muted);" id="modal-order-date">Placed:
+                            -</span>
+                    </div>
+                </div>
+                <button id="close-order-details-modal" class="btn btn-outline"
+                    style="padding: 6px 12px; font-size: 0.85rem;">✕ Close</button>
+            </div>
+
+            <div id="modal-order-content">
+                <!-- Dynamically populated order detail view -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Reservations Modal -->
+    <div id="admin-reservations-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 860px; width: 92%; max-height: 90vh; overflow-y: auto;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 16px; margin-bottom: 20px;">
+                <h3 class="checkout-card-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined" style="color: var(--color-secondary);">event_seat</span>
+                    <span>Table Reservations Request Log</span>
+                </h3>
+                <button id="close-reservations-modal" class="btn btn-outline"
+                    style="padding: 4px 10px; font-size: 0.8rem;">✕ Close</button>
+            </div>
+            <div id="admin-reservations-content" style="max-height: 480px; overflow-y: auto;">
+                Loading reservations...
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Logs Modal -->
+    <div id="audit-logs-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 720px; width: 90%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 class="checkout-card-title" style="margin: 0;">
+                    <span class="material-symbols-outlined" style="color: var(--color-secondary);">shield_lock</span>
+                    <span>Security Audit Logs</span>
+                </h3>
+                <button id="close-audit-modal" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.8rem;">✕
+                    Close</button>
+            </div>
+            <div id="audit-logs-content"
+                style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.82rem; background: #0f172a; color: #e2e8f0; padding: 16px; borderRadius: 8px;">
+                Loading audit logs...
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="chpw-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 440px; width: 90%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 class="checkout-card-title" style="margin: 0;">
+                    <span class="material-symbols-outlined" style="color: var(--color-secondary);">key</span>
+                    <span>Change Admin Password</span>
+                </h3>
+                <button id="close-chpw-modal" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.8rem;">✕
+                    Close</button>
+            </div>
+            <form id="chpw-form">
+                <div id="chpw-msg" class="coupon-msg hidden" style="margin-bottom: 12px; text-align: center;"></div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" id="chpw-current" required class="form-input">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">New Password (min 8 chars)</label>
+                    <input type="password" id="chpw-new" required minlength="8" class="form-input">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Update Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast-notification">
+        <span class="material-symbols-outlined" style="color: var(--color-secondary);">check_circle</span>
+        <span id="toast-message">Admin Action Executed!</span>
+    </div>
+
+    <!-- Pure Vanilla JS File -->
+    <script src="script.js"></script>
+</body>
+
+</html>

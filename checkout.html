@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="bn">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout & Order Cart - বাঙালির শখের রান্নাঘর</title>
+    <meta name="description"
+        content="Complete your authentic Bengali culinary order with বাঙালির শখের রান্নাঘর secure checkout system.">
+
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@500;700&family=Montserrat:wght@700;900&family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Serif+Bengali:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
+
+    <!-- Pure Vanilla CSS Style File -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="checkout-page-body">
+    <!-- Custom Mouse Cursor Elements -->
+    <div id="custom-cursor" class="custom-cursor"></div>
+    <div id="custom-cursor-follower" class="custom-cursor-follower"></div>
+
+    <!-- Checkout Page Site Header -->
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="index.html" class="brand-logo" aria-label="বাঙালির শখের রান্নাঘর Home">
+                <img src="BSR 01 cmyk.png" alt="বাঙালির শখের রান্নাঘর" class="brand-logo-img">
+            </a>
+
+            <nav class="nav-links">
+                <a href="index.html#menu" class="nav-link">← Back to Menu</a>
+                <a href="index.html#heritage" class="nav-link">Our Heritage</a>
+                <a href="#past-orders" class="nav-link" id="nav-history-link">Order History</a>
+            </nav>
+
+            <div class="header-actions">
+                <a href="index.html#menu" class="btn btn-outline" style="padding: 8px 16px; font-size: 0.85rem;">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">restaurant_menu</span>
+                    <span>Explore Menu</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main style="padding: 40px 0 80px;">
+        <div class="container">
+            
+            <!-- Page Heading -->
+            <div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+                <div>
+                    <span class="section-label">Order & Checkout</span>
+                    <h1 class="font-bengali" style="font-size: 2.25rem; font-weight: 700; color: var(--color-primary); margin-top: 4px;">
+                        Cart & Secure Checkout
+                    </h1>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button id="page-clear-cart-btn" class="btn btn-outline" style="padding: 8px 16px; font-size: 0.85rem;">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">delete</span> Clear Cart
+                    </button>
+                    <a href="index.html#menu" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">add</span> Add More Dishes
+                    </a>
+                </div>
+            </div>
+
+            <!-- Active Order / Checkout Grid Container -->
+            <div id="checkout-main-view" class="checkout-page-grid">
+                
+                <!-- Left Column: Cart Items & Details -->
+                <div class="checkout-left-col">
+                    <!-- Cart Items Section -->
+                    <div class="checkout-card-box">
+                        <h3 class="checkout-card-title">
+                            <span class="material-symbols-outlined">shopping_bag</span>
+                            <span>Selected Dishes (<span id="cart-item-count">0</span>)</span>
+                        </h3>
+
+                        <div id="page-cart-items" class="page-cart-list">
+                            <p id="page-empty-cart" style="color: var(--color-text-muted); text-align: center; padding: 40px 0;">
+                                Your cart is currently empty. <a href="index.html#menu" style="color: var(--color-secondary); text-decoration: underline;">Browse our menu</a> to add dishes!
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Customer Information & Delivery Form -->
+                    <div class="checkout-card-box" style="margin-top: 24px;">
+                        <h3 class="checkout-card-title">
+                            <span class="material-symbols-outlined">person</span>
+                            <span>Customer & Delivery Details</span>
+                        </h3>
+
+                        <form id="page-checkout-form">
+                            <div class="form-group">
+                                <label class="form-label">Full Name *</label>
+                                <input type="text" id="p-name" required placeholder="e.g. Sourav Mukherjee" class="form-input">
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Phone Number *</label>
+                                    <input type="tel" id="p-phone" required placeholder="+91 98765 43210" class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Email Address</label>
+                                    <input type="email" id="p-email" placeholder="name@example.com" class="form-input">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 16px;">
+                                <label class="form-label">Order Type *</label>
+                                <div class="order-type-selector">
+                                    <label class="radio-card">
+                                        <input type="radio" name="p-order-type" value="Delivery" checked>
+                                        <span class="material-symbols-outlined">delivery_dining</span>
+                                        <span>Home Delivery</span>
+                                    </label>
+                                    <label class="radio-card">
+                                        <input type="radio" name="p-order-type" value="Dine-In">
+                                        <span class="material-symbols-outlined">restaurant</span>
+                                        <span>Dine-In Table</span>
+                                    </label>
+                                    <label class="radio-card">
+                                        <input type="radio" name="p-order-type" value="Takeaway">
+                                        <span class="material-symbols-outlined">shopping_bag</span>
+                                        <span>Takeaway</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" id="p-address-label">Delivery Address / Table No. *</label>
+                                <input type="text" id="p-address" required placeholder="Enter delivery address in Kalyani or Table No." class="form-input">
+                            </div>
+
+                            <h4 class="checkout-card-title" style="margin-top: 24px; font-size: 1rem; border-top: 1px solid var(--color-border-subtle); padding-top: 16px;">
+                                <span class="material-symbols-outlined">payments</span> Payment Method
+                            </h4>
+
+                            <div class="payment-options">
+                                <label class="payment-card">
+                                    <input type="radio" name="p-payment-method" value="UPI / QR Code" checked>
+                                    <span class="material-symbols-outlined" style="color: #16a34a;">qr_code_scanner</span>
+                                    <div class="payment-info">
+                                        <strong>UPI / GPay / PhonePe / Paytm</strong>
+                                        <span>Instant digital payment</span>
+                                    </div>
+                                </label>
+                                <label class="payment-card">
+                                    <input type="radio" name="p-payment-method" value="Credit / Debit Card">
+                                    <span class="material-symbols-outlined" style="color: #2563eb;">credit_card</span>
+                                    <div class="payment-info">
+                                        <strong>Credit / Debit Card</strong>
+                                        <span>Visa, MasterCard, RuPay</span>
+                                    </div>
+                                </label>
+                                <label class="payment-card">
+                                    <input type="radio" name="p-payment-method" value="Cash on Delivery">
+                                    <span class="material-symbols-outlined" style="color: var(--color-secondary);">payments</span>
+                                    <div class="payment-info">
+                                        <strong>Cash / Pay at Counter</strong>
+                                        <span>Pay cash upon delivery</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <button type="submit" id="page-place-order-btn" class="btn btn-secondary" style="width: 100%; margin-top: 28px; padding: 14px; font-size: 1.05rem; font-weight: 700;">
+                                <span class="material-symbols-outlined">lock</span> Complete Purchase & Save Order
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Right Column: Bill Summary & Promo Coupon -->
+                <div class="checkout-right-col">
+                    <div class="checkout-summary-box" style="position: sticky; top: 100px;">
+                        <h3 class="checkout-card-title" style="border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 12px; margin-bottom: 16px;">
+                            <span class="material-symbols-outlined">receipt_long</span>
+                            <span>Order Calculation</span>
+                        </h3>
+
+                        <!-- Promo Code Input Box -->
+                        <div class="coupon-box" style="margin-bottom: 20px;">
+                            <label class="form-label">Have a Promo Coupon?</label>
+                            <div class="coupon-input-wrap">
+                                <input type="text" id="p-coupon-input" placeholder="e.g. BENGAL10" class="form-input" style="text-transform: uppercase;">
+                                <button id="p-apply-coupon-btn" class="btn btn-primary" type="button" style="padding: 8px 16px; font-size: 0.8rem;">Apply</button>
+                            </div>
+                            <div id="p-coupon-msg" class="coupon-msg hidden"></div>
+                            <p style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 6px;">
+                                Available codes: <strong style="color: var(--color-secondary);">BENGAL10</strong> (10% off), <strong style="color: var(--color-secondary);">SHOKHER20</strong> (20% off), <strong style="color: var(--color-secondary);">WELCOME50</strong> (₹50 off)
+                            </p>
+                        </div>
+
+                        <!-- Bill Breakdown -->
+                        <div class="bill-details">
+                            <div class="bill-row">
+                                <span>Items Subtotal</span>
+                                <span id="p-subtotal">₹0</span>
+                            </div>
+                            <div class="bill-row">
+                                <span>Taxes & GST (5%)</span>
+                                <span id="p-tax">₹0</span>
+                            </div>
+                            <div class="bill-row">
+                                <span>Packaging & Delivery</span>
+                                <span id="p-delivery">₹40</span>
+                            </div>
+                            <div class="bill-row discount-row hidden" id="p-discount-container">
+                                <span>Promo Discount</span>
+                                <span id="p-discount" style="color: #16a34a; font-weight: 700;">-₹0</span>
+                            </div>
+                            <hr style="border: none; border-top: 1px solid var(--color-border-subtle); margin: 16px 0;">
+                            <div class="bill-row total-row">
+                                <strong>Total Amount Payable</strong>
+                                <strong id="p-final-total" style="color: var(--color-secondary); font-size: 1.4rem;">₹0</strong>
+                            </div>
+                        </div>
+
+                        <!-- Security Badges -->
+                        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--color-border-subtle); display: flex; flex-direction: column; gap: 8px; font-size: 0.75rem; color: var(--color-text-muted);">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-outlined" style="color: #16a34a; font-size: 18px;">verified_user</span>
+                                <span>Encrypted 256-bit Secure Transaction</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-outlined" style="color: var(--color-secondary); font-size: 18px;">database</span>
+                                <span>Order instantly saved into your database</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Receipt & Order Placed View (Hidden initially, shown after order placement) -->
+            <div id="checkout-receipt-view" class="hidden" style="max-width: 680px; margin: 0 auto;">
+                <div class="checkout-card-box" style="text-align: center; padding: 40px 32px;">
+                    <div class="success-icon-badge">
+                        <span class="material-symbols-outlined" style="font-size: 48px; color: #16a34a;">check_circle</span>
+                    </div>
+                    <span class="section-label" style="background-color: rgba(22, 163, 74, 0.12); color: #16a34a;">Saved to Local Database</span>
+                    <h2 class="font-bengali" style="font-size: 2rem; font-weight: 700; color: var(--color-primary); margin-top: 8px;">
+                        Order Placed & Confirmed!
+                    </h2>
+                    <p style="color: var(--color-text-muted); font-size: 0.95rem; margin-top: 4px;">
+                        Thank you for ordering with বাঙালির শখের রান্নাঘর. Your order has been recorded in the database.
+                    </p>
+
+                    <!-- Status Tracker -->
+                    <div class="order-tracker" style="margin: 28px 0;">
+                        <div class="tracker-step completed">
+                            <span class="step-dot"></span>
+                            <span>Order Confirmed</span>
+                        </div>
+                        <div class="tracker-step active">
+                            <span class="step-dot"></span>
+                            <span>Kitchen Prep</span>
+                        </div>
+                        <div class="tracker-step">
+                            <span class="step-dot"></span>
+                            <span>Out for Delivery</span>
+                        </div>
+                    </div>
+
+                    <!-- Digital Invoice Card -->
+                    <div id="p-receipt-content" class="receipt-card" style="text-align: left; margin: 20px 0;"></div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                        <button id="p-print-receipt-btn" class="btn btn-outline" style="flex: 1; padding: 12px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">print</span> Print Invoice
+                        </button>
+                        <a href="index.html#menu" class="btn btn-primary" style="flex: 1; padding: 12px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">restaurant_menu</span> Order More
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Database Order History Section -->
+            <section id="past-orders" style="margin-top: 64px; padding-top: 32px; border-top: 1px solid var(--color-border-subtle);">
+                <div style="margin-bottom: 24px;">
+                    <span class="section-label">Database History</span>
+                    <h2 class="font-bengali" style="font-size: 1.75rem; font-weight: 700; color: var(--color-primary); margin-top: 4px;">
+                        My Past Orders Database
+                    </h2>
+                </div>
+
+                <div id="page-history-list" class="history-list"></div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast-notification">
+        <span class="material-symbols-outlined" style="color: var(--color-secondary);">check_circle</span>
+        <span id="toast-message">Action completed!</span>
+    </div>
+
+    <!-- Site Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top">
+                <div>
+                    <h3 class="font-bengali" style="font-size: 1.5rem; font-weight: 700;">বাঙালির শখের রান্নাঘর</h3>
+                    <p style="font-size: 0.8rem; opacity: 0.75; margin-top: 4px;">Preserving Heritage Culinary Art Through Every Dish.</p>
+                </div>
+                <div style="display: flex; gap: 16px;">
+                    <a href="index.html" class="nav-link">Home</a>
+                    <a href="index.html#menu" class="nav-link">Menu</a>
+                    <a href="#past-orders" class="nav-link">Order History</a>
+                    <a href="admin.html" class="nav-link" style="color: #ffffff; font-weight: 600;">🔒 Admin Portal</a>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>© 2026 বাঙালির শখের রান্নাঘর. All Rights Reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Pure Vanilla JS File -->
+    <script src="script.js"></script>
+</body>
+
+</html>
