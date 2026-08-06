@@ -222,16 +222,29 @@
                         </p>
                     </div>
 
-                    <div class="menu-filters">
-                        <button class="menu-filter active" data-category="all">All Dishes</button>
-                        <button class="menu-filter" data-category="mains">Main Courses</button>
-                        <button class="menu-filter" data-category="seafood">Seafood</button>
-                        <button class="menu-filter" data-category="sweets">Desserts</button>
+                    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                        <div class="menu-filters">
+                            <button class="menu-filter active" data-category="all">All Dishes</button>
+                            <button class="menu-filter" data-category="mains">Main Courses</button>
+                            <button class="menu-filter" data-category="seafood">Seafood</button>
+                            <button class="menu-filter" data-category="sweets">Desserts</button>
+                        </div>
+
+                        <!-- Desktop Slide Control Navigation Buttons -->
+                        <div class="menu-slider-nav">
+                            <button id="menu-prev-btn" class="slider-nav-btn" aria-label="Previous Slide" title="Previous Slide">
+                                <span class="material-symbols-outlined">chevron_left</span>
+                            </button>
+                            <button id="menu-next-btn" class="slider-nav-btn" aria-label="Next Slide" title="Next Slide">
+                                <span class="material-symbols-outlined">chevron_right</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Recipe Grid -->
-                <div class="dishes-grid" id="dishes-container">
+                <!-- Recipe Horizontal Slider Wrap -->
+                <div class="dishes-slider-wrap">
+                    <div class="dishes-grid" id="dishes-container">
                     <!-- Dish 1 -->
                     <article class="dish-card" data-category="seafood">
                         <div class="dish-img-wrap">

@@ -792,12 +792,59 @@ body {
     box-shadow: 0 4px 12px rgba(187, 0, 36, 0.3);
 }
 
+/* Desktop Slide Control Navigation Buttons */
+.menu-slider-nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.slider-nav-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--color-surface-soft);
+    border: 1.5px solid var(--color-border-subtle);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.slider-nav-btn:hover {
+    background-color: var(--color-secondary);
+    color: #ffffff;
+    border-color: var(--color-secondary);
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(187, 0, 36, 0.3);
+}
+
+/* --- Menu Horizontal Slider Track & Mobile Touch Swipe --- */
+.dishes-slider-wrap {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    scrollbar-width: none; /* Hide default scrollbar in Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    padding: 12px 4px 24px;
+}
+
+.dishes-slider-wrap::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for clean visual aesthetic */
+}
+
 .dishes-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: flex;
     gap: 24px;
     position: relative;
     z-index: 2;
+    width: max-content;
 }
 
 /* Dish Cards with Heritage Crimson & Glass Accent */
@@ -810,12 +857,25 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+    flex: 0 0 300px;
+    max-width: 320px;
+    scroll-snap-align: start;
     z-index: 2;
     transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
         border-color 0.4s ease,
         box-shadow 0.4s ease,
         background-color 0.4s ease,
         opacity 0.4s ease;
+}
+
+@media (max-width: 768px) {
+    .dish-card {
+        flex: 0 0 84vw;
+        max-width: 310px;
+    }
+    .menu-slider-nav {
+        display: none; /* Mobile relies on intuitive touch swipe gestures */
+    }
 }
 
 .dish-card:hover {

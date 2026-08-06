@@ -174,6 +174,59 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeTermsBtn) closeTermsBtn.addEventListener('click', () => toggleLegalModal(termsModal, false));
     if (termsModal) termsModal.addEventListener('click', (e) => { if (e.target === termsModal) toggleLegalModal(termsModal, false); });
 
+    // --- Menu Slider & Touch Swipe Controller ---
+    const dishesSliderWrap = document.querySelector('.dishes-slider-wrap');
+    const menuPrevBtn = document.getElementById('menu-prev-btn');
+    const menuNextBtn = document.getElementById('menu-next-btn');
+
+    if (dishesSliderWrap) {
+        if (menuPrevBtn) {
+            menuPrevBtn.addEventListener('click', () => {
+                const card = dishesSliderWrap.querySelector('.dish-card');
+                const scrollAmount = card ? card.offsetWidth + 24 : 320;
+                dishesSliderWrap.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            });
+        }
+
+        if (menuNextBtn) {
+            menuNextBtn.addEventListener('click', () => {
+                const card = dishesSliderWrap.querySelector('.dish-card');
+                const scrollAmount = card ? card.offsetWidth + 24 : 320;
+                dishesSliderWrap.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            });
+        }
+
+        // Mouse Drag / Touch Drag Support for Smooth Swiping
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        dishesSliderWrap.addEventListener('mousedown', (e) => {
+            isDown = true;
+            dishesSliderWrap.style.cursor = 'grabbing';
+            startX = e.pageX - dishesSliderWrap.offsetLeft;
+            scrollLeft = dishesSliderWrap.scrollLeft;
+        });
+
+        dishesSliderWrap.addEventListener('mouseleave', () => {
+            isDown = false;
+            dishesSliderWrap.style.cursor = '';
+        });
+
+        dishesSliderWrap.addEventListener('mouseup', () => {
+            isDown = false;
+            dishesSliderWrap.style.cursor = '';
+        });
+
+        dishesSliderWrap.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - dishesSliderWrap.offsetLeft;
+            const walk = (x - startX) * 2;
+            dishesSliderWrap.scrollLeft = scrollLeft - walk;
+        });
+    }
+
     // ==========================================================================
     // --- Local Database & Cart / Checkout System ---
     // ==========================================================================
