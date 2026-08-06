@@ -2,23 +2,21 @@
 venv/
 env/
 ENV/
+.venv/
 
-# Python Cache
+# Python bytecode & cache
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
 
-# Environment / Local variables
+# SQLite Databases & environment files
+*.db
+*.sqlite3
 .env
-.env.local
 
-# IDE & Editor files
+# IDE & OS metadata
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# OS files
 .DS_Store
 Thumbs.db
