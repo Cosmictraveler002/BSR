@@ -677,18 +677,18 @@ body {
     background-position: center;
     background-repeat: no-repeat;
     opacity: 0;
-    transform: scale(1.16);
-    filter: brightness(0.68) contrast(1.1) saturate(135%) sepia(15%) hue-rotate(345deg);
-    transition: opacity 1.8s cubic-bezier(0.16, 1, 0.3, 1),
-        transform 2.4s cubic-bezier(0.16, 1, 0.3, 1),
-        background-image 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: scale(1.08) translateZ(0);
+    filter: brightness(0.7) contrast(1.05);
+    will-change: opacity, transform;
+    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 1.6s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 0;
     pointer-events: none;
 }
 
 .menu-bg-backdrop.active {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateZ(0);
 }
 
 /* Soft Crimson Tint Overlay with Lower Opacity */
@@ -881,15 +881,10 @@ body {
 }
 
 .dish-card:hover {
-    transform: translateY(-8px) scale(1.03);
-    background-color: rgba(32, 10, 13, 0.88);
-    backdrop-filter: blur(14px);
+    transform: translate3d(0, -6px, 0);
+    background-color: rgba(36, 12, 16, 0.96);
     border-color: rgba(235, 87, 87, 0.6);
-    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.5), 0 0 25px rgba(187, 0, 36, 0.35);
-}
-
-.menu-section.has-active-hover .dish-card:not(:hover) {
-    opacity: 0.82;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
 }
 
 .dish-img-wrap {
@@ -904,12 +899,13 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), filter 0.6s ease;
+    will-change: transform;
+    transform: translateZ(0);
+    transition: transform 0.4s ease-out;
 }
 
 .dish-card:hover .dish-img-wrap img {
-    transform: scale(1.12);
-    filter: brightness(0.95) contrast(1.1);
+    transform: scale(1.08) translateZ(0);
 }
 
 .dish-badge {
