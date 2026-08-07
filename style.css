@@ -55,6 +55,15 @@ html {
     scroll-behavior: smooth;
 }
 
+/* --- Mobile Smooth Scroll --- */
+.is-mobile html,
+html.is-mobile,
+.is-mobile body {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* Momentum scrolling on iOS */
+}
+
+
 body {
     font-family: var(--font-main);
     background-color: var(--color-surface);
@@ -2532,6 +2541,32 @@ body {
     box-shadow: none;
 }
 
+/* Neutralize backdrop-filter blur on modals and drawers on mobile */
+.is-mobile .modal-backdrop,
+.is-mobile .drawer-backdrop {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Disable story blur accent background filter on mobile */
+.is-mobile .story-blur-accent {
+    filter: none !important;
+    opacity: 0 !important;
+}
+
+/* Disable hover transforms & shadow animations on touch cards */
+.is-mobile .dish-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Render containment on major sections to isolate reflow/repaint calculations */
+.is-mobile .hero,
+.is-mobile .story-section,
+.is-mobile .menu-section {
+    contain: content;
+}
+
 /* Neutralize will-change on elements that are not actively animated on mobile
    — prevents GPU memory pressure from promoting too many layers */
 .is-mobile .hero-reveal,
@@ -2540,4 +2575,4 @@ body {
 .is-mobile .modal-box {
     will-change: auto;
     transform: none;
-}
+}

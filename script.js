@@ -142,7 +142,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     mobileNavLinks.forEach(link => {
-        link.addEventListener('click', () => toggleMobileMenu(false));
+        link.addEventListener('click', (e) => {
+            const href = link.getAttribute('href');
+            if (href && href.startsWith('#') && href.length > 1) {
+                e.preventDefault();
+                const target = document.querySelector(href);
+                toggleMobileMenu(false);
+                if (target) {
+                    // Wait for menu close animation + overflow restore before scrolling
+                    setTimeout(() => {
+                        requestAnimationFrame(() => {
+                            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                    }, 320);
+                }
+            } else {
+                toggleMobileMenu(false);
+            }
+        });
     });
 
     // --- Table Reservation Modal ---
@@ -1048,17 +1065,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let _storyFrameCounter = 0;
     function getFluidWavePathData(progress, t) {
-        const numPoints = IS_MOBILE ? 20 : 60;
+        const numPoints = 60;
         const width = 1440;
         const targetH = 600 * progress;
 
-        let pathStr = "";
-
-        for (let i = 0; i <= numPoints; i++) {
-            const x = (i / numPoints) * width;
+        const points = [];
+        // Extended boundary sampling (-1 to numPoints + 1) for seamless edge tangents at x=0 and x=1440
+        for (let i = -1; i <= numPoints + 1; i++) {
             const normX = i / numPoints;
+            const x = normX * width;
 
-            // Overlapping harmonic fluid waves (like hero blob dynamics)
+            // Overlapping harmonic fluid waves
             const wave1 = Math.sin(normX * Math.PI * 4 + t * 1.6) * 16;
             const wave2 = Math.cos(normX * Math.PI * 3 - t * 1.1) * 12;
             const wave3 = Math.sin(normX * Math.PI * 6 + t * 2.0) * 8;
@@ -1073,13 +1090,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 y = Math.min(0, wave1 * 0.2);
             }
 
-            if (i === 0) {
-                pathStr = `M 0,0 L 0,${y.toFixed(1)} `;
-            } else {
-                pathStr += `L ${x.toFixed(1)} ${y.toFixed(1)} `;
-            }
+            points.push({ x, y });
         }
 
+        // Start path at top-left (0,0) and line down to start of curve at x=0
+        const pt0 = points[1]; // points[1] corresponds to i=0 (x=0)
+        let pathStr = `M 0,0 L 0,${pt0.y.toFixed(1)} `;
+
+        // Continuous C1 Quadratic Bezier spline interpolation through x=1440
+        for (let i = 1; i <= numPoints; i++) {
+            const cpX = points[i].x;
+            const cpY = points[i].y;
+            const nextPt = points[i + 1];
+            const midX = (cpX + nextPt.x) / 2;
+            const midY = (cpY + nextPt.y) / 2;
+            pathStr += `Q ${cpX.toFixed(1)},${cpY.toFixed(1)} ${midX.toFixed(1)},${midY.toFixed(1)} `;
+        }
+
+        // Close path to top-right corner
         pathStr += `L 1440,0 Z`;
         return pathStr;
     }
@@ -1093,16 +1121,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Smooth automatic wave fill progression
+        _storyFrameCounter++;
+
+        // Smooth automatic wave fill progression (30% faster on mobile & desktop)
         if (waveFilling && waveFillProgress < 1.0) {
-            waveFillProgress += 0.0084;
+            waveFillProgress += IS_MOBILE ? 0.0052 : 0.01092;
             if (waveFillProgress >= 1.0) {
                 waveFillProgress = 1.0;
             }
         }
 
-        // Time progression for free-flowing organic motion
-        storyWaveTime += 0.014;
+        // Time progression for free-flowing organic motion (30% faster on mobile & desktop)
+        storyWaveTime += IS_MOBILE ? 0.0078 : 0.0182;
 
         // Generate fluid wave path
         const pathData = getFluidWavePathData(waveFillProgress, storyWaveTime);
@@ -1115,12 +1145,7 @@ document.addEventListener('DOMContentLoaded', () => {
             heritageSection.classList.remove('wave-active');
         }
 
-        _storyFrameCounter++;
-        if (!IS_MOBILE || _storyFrameCounter % 2 === 0) {
-            storyRafId = requestAnimationFrame(animateStoryWaveFill);
-        } else {
-            storyRafId = requestAnimationFrame(animateStoryWaveFill);
-        }
+        storyRafId = requestAnimationFrame(animateStoryWaveFill);
     }
 
     if (heritageSection && storyWavePath) {
@@ -1302,7 +1327,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        const isMobile = () => window.innerWidth <= 768;
+        // Cache viewport dimensions, mobile flag, and scroll Y outside rAF to prevent layout thrash
+        let cachedVw = window.innerWidth;
+        let cachedVh = window.innerHeight;
+        let cachedIsMobile = cachedVw <= 768;
+        let cachedScrollY = window.scrollY;
+
+        window.addEventListener('resize', debounce(() => {
+            cachedVw = window.innerWidth;
+            cachedVh = window.innerHeight;
+            cachedIsMobile = cachedVw <= 768;
+        }, 200));
+
+        window.addEventListener('scroll', () => {
+            cachedScrollY = window.scrollY;
+        }, { passive: true });
 
         // ── Mouse & Touch tracking ──
         function updatePointer(clientX, clientY) {
@@ -1326,7 +1365,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ── Spotlight Base Radius Math ──
         function calcRadius(cx, cy, vw, vh) {
-            if (isMobile()) {
+            if (cachedIsMobile) {
                 return Math.min(vw, vh) * 0.19;
             }
             const dist = Math.sqrt(cx * cx + cy * cy);
@@ -1338,14 +1377,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return minR + t * (maxR - minR);
         }
 
-        // ── Fluid Polygon Math (Always a Blob) ──
+        // ── Fluid Polygon Math (Desktop Blob) ──
         let _heroFrameCounter = 0;
         function getBlobPath(cx, cy, r, t) {
-            const mobile = isMobile();
-            const numPoints = mobile ? 30 : 120; // 30 pts on mobile vs 120 on desktop
+            const numPoints = cachedIsMobile ? 20 : 120;
             let d = "";
-            const varianceMult = mobile ? 0.05 : 0.09;
-            const timeSpeed = mobile ? 0.6 : 1.0;
+            const varianceMult = cachedIsMobile ? 0.05 : 0.09;
+            const timeSpeed = cachedIsMobile ? 0.6 : 1.0;
             const TWO_PI = Math.PI * 2;
 
             for (let i = 0; i <= numPoints; i++) {
@@ -1377,29 +1415,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let expandingIndex = spotIndex;
             bgIndex = spotIndex;
-            spotIndex = (spotIndex + 1) % images.length;
+            const maxImages = cachedIsMobile ? 3 : images.length;
+            spotIndex = (spotIndex + 1) % maxImages;
 
-            // 1. Setup Clone Layer EXACTLY over the current spotlight geometry
-            let initialPath = getBlobPath(currentX, currentY, Math.max(1, currentRadius), time);
             cloneImg.style.backgroundImage = images[expandingIndex].style.backgroundImage;
-            cloneLayer.style.clipPath = `path("${initialPath}")`;
-            cloneLayer.style.webkitClipPath = `path("${initialPath}")`;
-            cloneLayer.style.opacity = '1';
+            if (!cachedIsMobile) {
+                // Setup Clone Layer over current spotlight geometry on desktop
+                let initialPath = getBlobPath(currentX, currentY, Math.max(1, currentRadius), time);
+                cloneLayer.style.clipPath = `path("${initialPath}")`;
+                cloneLayer.style.webkitClipPath = `path("${initialPath}")`;
+                cloneLayer.style.opacity = '1';
+            } else {
+                // Setup Clone Layer using GPU primitive circle on mobile
+                let initialCircle = `circle(${Math.round(Math.max(1, currentRadius))}px at ${Math.round(currentX)}px ${Math.round(currentY)}px)`;
+                cloneLayer.style.clipPath = initialCircle;
+                cloneLayer.style.webkitClipPath = initialCircle;
+                cloneLayer.style.opacity = '1';
+            }
 
-            // 2. Update Spotlight to NEXT image & Background to the EXPANDING image
+            // Update Spotlight to NEXT image & Background to the EXPANDING image
             images[expandingIndex].classList.remove('active');
             images[spotIndex].classList.add('active');
             heroBgSolid.style.backgroundImage = images[bgIndex].style.backgroundImage;
 
-            // 3. Launch the expansion animation for the old blob
             wave.active = true;
             wave.progress = 0;
             wave.x = currentX;
             wave.y = currentY;
             wave.startR = currentRadius;
-            wave.maxR = Math.sqrt(window.innerWidth ** 2 + window.innerHeight ** 2) * 1.2;
+            wave.maxR = Math.sqrt(cachedVw ** 2 + cachedVh ** 2) * 1.2;
 
-            // 4. RESET the current tracking spotlight to scale 0 so it grows back seamlessly
+            // RESET current tracking spotlight to scale 0 so it grows back seamlessly
             currentRadius = 0;
             spotlightGrowth = 0;
 
@@ -1445,9 +1491,9 @@ document.addEventListener('DOMContentLoaded', () => {
             lastFrameTime = currentTime;
             _heroFrameCounter++;
 
-            const mobile = isMobile();
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
+            const mobile = cachedIsMobile;
+            const vw = cachedVw;
+            const vh = cachedVh;
 
             // Fast & responsive time progression
             time += ((mobile ? 0.0025 : 0.004) * deltaTime);
@@ -1461,9 +1507,8 @@ document.addEventListener('DOMContentLoaded', () => {
             currentX += (targetX - currentX) * lerpSpeed;
             currentY += (targetY - currentY) * lerpSpeed;
 
-            // Scroll Disappear Logic
-            let scrollY = window.scrollY;
-            let shrinkFactor = Math.max(0, 1 - (scrollY / (vh * 0.6)));
+            // Scroll Disappear Logic (using cached scrollY)
+            let shrinkFactor = Math.max(0, 1 - (cachedScrollY / (vh * 0.6)));
 
             heroText.style.opacity = Math.max(0.2, shrinkFactor);
 
@@ -1486,14 +1531,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cubic ease-out curve for responsive blob regrowth
             let growthEase = 1 - Math.pow(1 - spotlightGrowth, 3);
             const baseR = calcRadius(currentX, currentY, vw, vh);
-            const targetR = baseR * Math.max(0.3, shrinkFactor) * growthEase;
+            // Lightweight sine-wave edge pulse on mobile (+/- 4%) without SVG polygon parsing
+            const mobilePulse = mobile ? Math.sin(time * 2.5) * (baseR * 0.04) : 0;
+            const targetR = (baseR + mobilePulse) * Math.max(0.3, shrinkFactor) * growthEase;
 
             const radiusLerp = mobile ? 0.45 : 0.6;
             currentRadius += (targetR - currentRadius) * radiusLerp;
 
             if (currentRadius > 1) {
-                const spotlightPath = getBlobPath(currentX, currentY, currentRadius, time);
-                const pathCss = `path("${spotlightPath}")`;
+                let pathCss;
+                if (mobile) {
+                    // GPU-composited primitive circle clip-path on mobile (Zero repaint overhead)
+                    pathCss = `circle(${Math.round(currentRadius)}px at ${Math.round(currentX)}px ${Math.round(currentY)}px)`;
+                } else {
+                    const spotlightPath = getBlobPath(currentX, currentY, currentRadius, time);
+                    pathCss = `path("${spotlightPath}")`;
+                }
 
                 revealLayer.style.clipPath = pathCss;
                 revealLayer.style.webkitClipPath = pathCss;
@@ -1502,9 +1555,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 revealLayer.style.opacity = '0';
             }
 
-            // Slower Wave Expansion (80% slower duration: 2700ms mobile vs 1980ms desktop)
+            // Wave Expansion (GPU Circle on Mobile, SVG Blob on Desktop)
             if (wave.active) {
-                const waveDuration = mobile ? 3500 : 2700;
+                const waveDuration = mobile ? 2200 : 2700;
                 wave.progress += (deltaTime / waveDuration);
 
                 if (wave.progress >= 1) {
@@ -1513,22 +1566,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     blobBorder.style.stroke = "rgba(255, 255, 255, 0)";
                 } else {
                     let t = wave.progress;
-                    let easeOut = 1 - Math.pow(1 - t, mobile ? 4 : 3);
+                    let easeOut = 1 - Math.pow(1 - t, 3);
                     wave.currentR = wave.startR + easeOut * (wave.maxR - wave.startR);
 
-                    let blobPathStr = getBlobPath(wave.x, wave.y, wave.currentR, time);
-                    const pathCss = `path("${blobPathStr}")`;
+                    if (mobile) {
+                        const pathCss = `circle(${Math.round(wave.currentR)}px at ${Math.round(wave.x)}px ${Math.round(wave.y)}px)`;
+                        cloneLayer.style.clipPath = pathCss;
+                        cloneLayer.style.webkitClipPath = pathCss;
+                        cloneLayer.style.opacity = (1 - easeOut).toString();
+                    } else {
+                        let blobPathStr = getBlobPath(wave.x, wave.y, wave.currentR, time);
+                        const pathCss = `path("${blobPathStr}")`;
 
-                    cloneLayer.style.clipPath = pathCss;
-                    cloneLayer.style.webkitClipPath = pathCss;
-                    cloneLayer.style.opacity = 1 - easeOut;
+                        cloneLayer.style.clipPath = pathCss;
+                        cloneLayer.style.webkitClipPath = pathCss;
+                        cloneLayer.style.opacity = (1 - easeOut).toString();
 
-                    // Skip SVG border stroke on mobile to reduce render cost
-                    if (!mobile) {
                         blobBorder.setAttribute('d', blobPathStr);
                         blobBorder.style.stroke = `rgba(255, 255, 255, ${0.8 * (1 - easeOut)})`;
-                    } else {
-                        blobBorder.style.stroke = 'rgba(255,255,255,0)';
                     }
                 }
             }

@@ -17,19 +17,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet">
 
-    <!-- Preload Hero Animation Images for instant fluid transitions -->
-    <link rel="preload" as="image"
+    <!-- Preload Hero Animation Images for instant fluid transitions (Desktop only to conserve mobile network/memory) -->
+    <link rel="preload" as="image" media="(min-width: 769px)"
         href="https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=2000&auto=format&fit=crop" />
-    <link rel="preload" as="image"
+    <link rel="preload" as="image" media="(min-width: 769px)"
         href="https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?q=80&w=2000&auto=format&fit=crop" />
-    <link rel="preload" as="image"
+    <link rel="preload" as="image" media="(min-width: 769px)"
         href="https://images.unsplash.com/photo-1606491956689-2ea866880c84?q=80&w=2000&auto=format&fit=crop" />
-    <link rel="preload" as="image"
+    <link rel="preload" as="image" media="(min-width: 769px)"
         href="https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=2000&auto=format&fit=crop" />
-    <link rel="preload" as="image"
+    <link rel="preload" as="image" media="(min-width: 769px)"
         href="https://images.unsplash.com/photo-1589301760014-d929f39ce9b1?q=80&w=2000&auto=format&fit=crop" />
-    <link rel="preload" as="image"
+    <link rel="preload" as="image" media="(min-width: 769px)"
         href="https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=2000&auto=format&fit=crop" />
+
+    <!-- Google Maps Preconnect & Map Embed Preload -->
+    <link rel="preconnect" href="https://www.google.com">
+    <link rel="preconnect" href="https://maps.googleapis.com">
+    <link rel="preload" as="document" href="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3674.3214541484055!2d88.4342!3d22.9772!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f89551c6c646b9%3A0xb695b28aa1a7bb02!2sBlock%20B%2C%20Kalyani%2C%20West%20Bengal%20741235!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin">
+
 
     <!-- Pure Vanilla CSS Style File -->
     <link rel="stylesheet" href="style.css">
