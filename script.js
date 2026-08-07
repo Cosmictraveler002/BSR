@@ -1556,6 +1556,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Automatically verify admin session on admin page load
+    if (adminLoginScreen || adminDashboardScreen) {
+        checkAdminSession();
+    }
+
+
     if (adminLoginForm) {
         adminLoginForm.addEventListener('submit', async (e) => {
             e.preventDefault();

@@ -11,6 +11,8 @@ from app.database import engine, Base, SessionLocal
 from app.models import AdminUser
 from app.routers import public, admin
 
+from fastapi.responses import RedirectResponse
+
 # Database tables initialization
 Base.metadata.create_all(bind=engine)
 
@@ -51,11 +53,15 @@ app.add_middleware(
 app.include_router(public.router)
 app.include_router(admin.router)
 
-@app.on_event("startup")
-def startup_event():
+@app.get("/admin", include_in_schema=False)
+def redirect_to_admin_html():
+    return RedirectResponse(url="/admin.html")
+
+def init_db_and_seed_admin():
     """Initializes Database tables and seeds default admin user if not present."""
-    db = SessionLocal()
     try:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
         existing_admin = db.query(AdminUser).filter(AdminUser.username == settings.DEFAULT_ADMIN_USER).first()
         if not existing_admin:
             hashed_pw = get_password_hash(settings.DEFAULT_ADMIN_PASS)
@@ -74,5 +80,13 @@ def startup_event():
     finally:
         db.close()
 
+# Execute DB initialization immediately
+init_db_and_seed_admin()
+
+@app.on_event("startup")
+def startup_event():
+    init_db_and_seed_admin()
+
 # Serve static web frontend files
 app.mount("/", StaticFiles(directory=".", html=True), name="static")
+
