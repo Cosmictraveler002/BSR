@@ -516,7 +516,8 @@ body {
     position: relative;
     padding: 96px 0;
     overflow: hidden;
-    background-color: var(--color-surface);
+    background-color: #ffffff !important;
+    color-scheme: light !important;
     transition: background-color 0.6s ease;
 }
 
@@ -540,44 +541,6 @@ body {
 .story-grid {
     position: relative;
     z-index: 2;
-}
-
-/* Smooth text & element transitions as wave fills background */
-.story-section.wave-active .story-title {
-    color: #ffffff !important;
-}
-
-.story-section.wave-active .story-text {
-    color: #e5d7d8 !important;
-}
-
-.story-section.wave-active .story-text strong {
-    color: #ff6b81 !important;
-}
-
-.story-section.wave-active #read-story-btn {
-    color: #ff6b81 !important;
-}
-
-.story-section.wave-active .section-label {
-    background-color: rgba(255, 107, 129, 0.2) !important;
-    color: #ff6b81 !important;
-}
-
-.story-section.wave-active .story-image-frame {
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-}
-
-.story-section .story-title,
-.story-section .story-text,
-.story-section .section-label,
-.story-section #read-story-btn,
-.story-section .story-image-frame {
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.story-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 48px;
@@ -653,6 +616,122 @@ body {
     font-size: 1rem;
     line-height: 1.7;
     margin-bottom: 16px;
+}
+
+.story-btn {
+    font-weight: 600;
+    color: var(--color-primary);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: underline;
+    transition: var(--transition);
+}
+
+.story-btn .btn-icon {
+    transition: transform 0.3s ease;
+}
+
+.story-btn:hover .btn-icon,
+.story-btn:focus .btn-icon {
+    transform: translateX(4px);
+}
+
+.brand-highlight {
+    color: var(--color-primary);
+    transition: color 0.3s ease;
+}
+
+/* Smooth variable text & element color transitions in sync with wave fill progression */
+.story-section {
+    --wave-fill: 0;
+}
+
+.story-section .story-title {
+    color: color-mix(in srgb, #ffffff calc(var(--wave-fill) * 100%), #000000);
+    transition: color 0.15s ease-out;
+}
+
+.story-section .story-text {
+    color: color-mix(in srgb, #e5d7d8 calc(var(--wave-fill) * 100%), #706C64);
+    transition: color 0.15s ease-out;
+}
+
+.story-section .story-text strong,
+.story-section .brand-highlight {
+    color: color-mix(in srgb, #ff6b81 calc(var(--wave-fill) * 100%), #000000);
+    transition: color 0.15s ease-out;
+}
+
+.story-section #read-story-btn,
+.story-section .story-btn {
+    color: color-mix(in srgb, #ff6b81 calc(var(--wave-fill) * 100%), #000000);
+    transition: color 0.15s ease-out;
+}
+
+.story-section .section-label {
+    background-color: color-mix(in srgb, rgba(255, 107, 129, 0.2) calc(var(--wave-fill) * 100%), rgba(255, 218, 216, 0.5));
+    color: color-mix(in srgb, #ff6b81 calc(var(--wave-fill) * 100%), #bb0024);
+    transition: background-color 0.15s ease-out, color 0.15s ease-out;
+}
+
+.story-section .story-image-frame {
+    border-color: color-mix(in srgb, rgba(255, 255, 255, 0.2) calc(var(--wave-fill) * 100%), #E5E3E0);
+    box-shadow: color-mix(in srgb, rgba(0, 0, 0, 0.5) calc(var(--wave-fill) * 100%), rgba(0, 0, 0, 0.12));
+    transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+.story-section.wave-active .story-title {
+    color: #ffffff;
+}
+
+.story-section.wave-active .story-text {
+    color: #e5d7d8;
+}
+
+.story-section.wave-active .story-text strong,
+.story-section.wave-active .brand-highlight {
+    color: #ff6b81;
+}
+
+.story-section.wave-active #read-story-btn,
+.story-section.wave-active .story-btn {
+    color: #ff6b81;
+}
+
+.story-section.wave-active .section-label {
+    background-color: rgba(255, 107, 129, 0.2);
+    color: #ff6b81;
+}
+
+.story-section.wave-active .story-image-frame {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.story-section .story-title,
+.story-section .story-text,
+.story-section .section-label,
+.story-section #read-story-btn,
+.story-section .story-btn,
+.story-section .story-image-frame {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Enforce Light Mode Container on Our Story Section across all Dark Mode themes ── */
+@media (prefers-color-scheme: dark) {
+    .story-section:not(.wave-active) {
+        background-color: #ffffff !important;
+        color-scheme: light !important;
+    }
+}
+
+/* Class-based dark theme and mobile dark mode overrides */
+.dark-mode .story-section:not(.wave-active),
+.dark-theme .story-section:not(.wave-active),
+.is-mobile.dark-mode .story-section:not(.wave-active) {
+    background-color: #ffffff !important;
+    color-scheme: light !important;
 }
 
 /* --- Section Divider --- */

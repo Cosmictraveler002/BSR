@@ -1138,6 +1138,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const pathData = getFluidWavePathData(waveFillProgress, storyWaveTime);
         storyWavePath.setAttribute('d', pathData);
 
+        // Update CSS custom property --wave-fill continuously in sync with wave fill progression
+        heritageSection.style.setProperty('--wave-fill', waveFillProgress.toFixed(3));
+
         // Toggle wave-active text contrast when wave fills section (> 20%)
         if (waveFillProgress > 0.20) {
             heritageSection.classList.add('wave-active');
@@ -1158,6 +1161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     waveFilling = false;
                     waveFillProgress = 0;
+                    heritageSection.style.setProperty('--wave-fill', '0');
                     heritageSection.classList.remove('wave-active');
                     if (storyRafId) {
                         cancelAnimationFrame(storyRafId);
