@@ -19,8 +19,12 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_USER: str = os.getenv("ADMIN_USERNAME", "admin")
     DEFAULT_ADMIN_PASS: str = os.getenv("ADMIN_PASSWORD", "bsr@admin2026")
 
-    # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./bsr_restaurant.db")
+    # Database - automatically use /tmp directory in serverless environments (Vercel)
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL", 
+        f"sqlite:///{'/tmp/bsr_restaurant.db' if os.getenv('VERCEL') else './bsr_restaurant.db'}"
+    )
+
 
     class Config:
         env_file = ".env"
