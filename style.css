@@ -2500,3 +2500,44 @@ body {
     -webkit-overflow-scrolling: touch;
     padding: 12px 4px 24px;
 }
+
+/* ==========================================================================
+   Mobile Performance Overrides (.is-mobile class added by JS on window ≤ 768px)
+   These rules strip expensive GPU operations without changing visual design.
+   ========================================================================== */
+
+/* Hide custom cursor on mobile — no mousemove listener is attached either */
+.is-mobile #custom-cursor,
+.is-mobile #custom-cursor-follower {
+    display: none !important;
+}
+
+/* Remove expensive runtime blur filter from overlay layers — use opacity only */
+.is-mobile .menu-bg-overlay,
+.is-mobile .menu-texture-overlay {
+    filter: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* Disable SVG blob border stroke on mobile (handled in JS too, belt-and-suspenders) */
+.is-mobile #blobBorder {
+    stroke-width: 0 !important;
+    stroke: rgba(255, 255, 255, 0) !important;
+}
+
+/* Remove box-shadow glow from palette rings on mobile — transform/opacity only */
+.is-mobile .palette-core,
+.is-mobile .palette-ring {
+    box-shadow: none;
+}
+
+/* Neutralize will-change on elements that are not actively animated on mobile
+   — prevents GPU memory pressure from promoting too many layers */
+.is-mobile .hero-reveal,
+.is-mobile .story-image-wrap,
+.is-mobile .dish-card,
+.is-mobile .modal-box {
+    will-change: auto;
+    transform: none;
+}

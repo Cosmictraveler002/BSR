@@ -3,6 +3,34 @@
 // ==========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    // ==========================================================================
+    // --- Performance Utilities (Throttle, Debounce, Mobile Detection) ---
+    // ==========================================================================
+    const IS_MOBILE = window.innerWidth <= 768;
+    if (IS_MOBILE) document.body.classList.add('is-mobile');
+
+    function throttle(func, limit) {
+        let inThrottle;
+        return function() {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    }
+
+    function debounce(func, wait = 250) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
     // --- Force scroll to Top / Hero section on reload (except Admin Portal) ---
     if (!document.body.classList.contains('admin-page-body')) {
         if ('scrollRestoration' in history) {
@@ -22,14 +50,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!preloader) return;
 
+        const _preloadW = IS_MOBILE ? 800 : 2000;
         const urlsToPreload = [
             'BSR 01 cmyk.png',
-            'https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=2000&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?q=80&w=2000&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1606491956689-2ea866880c84?q=80&w=2000&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=2000&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1589301760014-d929f39ce9b1?q=80&w=2000&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=2000&auto=format&fit=crop'
+            `https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=${_preloadW}&auto=format&fit=crop`,
+            `https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?q=80&w=${_preloadW}&auto=format&fit=crop`,
+            `https://images.unsplash.com/photo-1606491956689-2ea866880c84?q=80&w=${_preloadW}&auto=format&fit=crop`,
+            `https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=${_preloadW}&auto=format&fit=crop`,
+            `https://images.unsplash.com/photo-1589301760014-d929f39ce9b1?q=80&w=${_preloadW}&auto=format&fit=crop`,
+            `https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=${_preloadW}&auto=format&fit=crop`
         ];
 
         document.querySelectorAll('img').forEach(img => {
@@ -954,14 +983,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let isDesktop = window.innerWidth > 768;
         let hoverTimer = null;
 
-        window.addEventListener('resize', () => {
+        window.addEventListener('resize', debounce(() => {
             isDesktop = window.innerWidth > 768;
             if (!isDesktop) {
                 clearTimeout(hoverTimer);
                 menuBgBackdrop.classList.remove('active');
                 menuSection.classList.remove('has-active-hover');
             }
-        });
+        }, 300));
 
         dishCards.forEach(card => {
             const img = card.querySelector('.dish-img-wrap img');
@@ -1017,8 +1046,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let waveFillProgress = 0;
     let waveFilling = false;
 
+    let _storyFrameCounter = 0;
     function getFluidWavePathData(progress, t) {
-        const numPoints = 60;
+        const numPoints = IS_MOBILE ? 20 : 60;
         const width = 1440;
         const targetH = 600 * progress;
 
@@ -1085,7 +1115,12 @@ document.addEventListener('DOMContentLoaded', () => {
             heritageSection.classList.remove('wave-active');
         }
 
-        storyRafId = requestAnimationFrame(animateStoryWaveFill);
+        _storyFrameCounter++;
+        if (!IS_MOBILE || _storyFrameCounter % 2 === 0) {
+            storyRafId = requestAnimationFrame(animateStoryWaveFill);
+        } else {
+            storyRafId = requestAnimationFrame(animateStoryWaveFill);
+        }
     }
 
     if (heritageSection && storyWavePath) {
@@ -1169,7 +1204,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const follower = document.getElementById('custom-cursor-follower');
     let scrollTimeout;
 
-    if (cursor && window.innerWidth > 768) {
+    // Custom cursor: only attach events on desktop – no listeners consumed on mobile
+    if (cursor && !IS_MOBILE) {
         document.addEventListener('mousemove', (e) => {
             cursor.style.left = `${e.clientX}px`;
             cursor.style.top = `${e.clientY}px`;
@@ -1181,14 +1217,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        window.addEventListener('scroll', () => {
+        window.addEventListener('scroll', throttle(() => {
             cursor.classList.add('scrolling');
-
             clearTimeout(scrollTimeout);
             scrollTimeout = setTimeout(() => {
                 cursor.classList.remove('scrolling');
             }, 300);
-        });
+        }, 100), { passive: true });
 
         // Magnifying glass expansion when hovering focused elements
         const focusableSelector = 'a, button, .dish-card, input, select, .brand-logo, .hero-image-card, .menu-filter, .feature-card';
@@ -1304,15 +1339,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // ── Fluid Polygon Math (Always a Blob) ──
+        let _heroFrameCounter = 0;
         function getBlobPath(cx, cy, r, t) {
             const mobile = isMobile();
-            const numPoints = mobile ? 90 : 120;
+            const numPoints = mobile ? 30 : 120; // 30 pts on mobile vs 120 on desktop
             let d = "";
             const varianceMult = mobile ? 0.05 : 0.09;
             const timeSpeed = mobile ? 0.6 : 1.0;
+            const TWO_PI = Math.PI * 2;
 
             for (let i = 0; i <= numPoints; i++) {
-                let theta = (i / numPoints) * Math.PI * 2;
+                let theta = (i / numPoints) * TWO_PI;
 
                 let radiusVariance = r * varianceMult;
                 let wave1 = Math.sin(theta * 4 + t * 1.2 * timeSpeed) * radiusVariance;
@@ -1388,6 +1425,7 @@ document.addEventListener('DOMContentLoaded', () => {
         heroObserver.observe(hero);
 
         // ── Animation Loop (Frame Rate Independent & Viewport Throttled) ──
+        const _HERO_FPS_INTERVAL = IS_MOBILE ? 33 : 16; // 30fps on mobile, 60fps on desktop
         function animate(currentTime) {
             if (!isHeroVisible) {
                 heroRafId = null;
@@ -1397,8 +1435,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentTime) currentTime = performance.now();
             let deltaTime = currentTime - lastFrameTime;
 
+            // Throttle to target FPS on mobile to reduce CPU load
+            if (deltaTime < _HERO_FPS_INTERVAL) {
+                heroRafId = requestAnimationFrame(animate);
+                return;
+            }
+
             if (deltaTime > 50) deltaTime = 16;
             lastFrameTime = currentTime;
+            _heroFrameCounter++;
 
             const mobile = isMobile();
             const vw = window.innerWidth;
@@ -1478,8 +1523,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     cloneLayer.style.webkitClipPath = pathCss;
                     cloneLayer.style.opacity = 1 - easeOut;
 
-                    blobBorder.setAttribute('d', blobPathStr);
-                    blobBorder.style.stroke = `rgba(255, 255, 255, ${(mobile ? 0.6 : 0.8) * (1 - easeOut)})`;
+                    // Skip SVG border stroke on mobile to reduce render cost
+                    if (!mobile) {
+                        blobBorder.setAttribute('d', blobPathStr);
+                        blobBorder.style.stroke = `rgba(255, 255, 255, ${0.8 * (1 - easeOut)})`;
+                    } else {
+                        blobBorder.style.stroke = 'rgba(255,255,255,0)';
+                    }
                 }
             }
 
@@ -1508,6 +1558,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminOrdersList = document.getElementById('admin-orders-list');
     const adminRefreshBtn = document.getElementById('admin-refresh-btn');
     const adminClearDbBtn = document.getElementById('admin-clear-db-btn');
+
+    // Debounce admin search to avoid re-rendering on every keystroke
+    if (adminSearchInput) {
+        adminSearchInput.addEventListener('input', debounce(() => renderAdminDashboard(), 300));
+    }
 
     // Security Modals Elements
     const adminAuditBtn = document.getElementById('admin-audit-btn');
@@ -1709,6 +1764,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const ordersMap = {};
+        // Use DocumentFragment to batch all DOM insertions – prevents layout thrash on each append
+        const ordersFragment = document.createDocumentFragment();
 
         orders.forEach(order => {
             ordersMap[order.id] = order;
@@ -1787,8 +1844,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
-            adminOrdersList.appendChild(card);
+            ordersFragment.appendChild(card);
         });
+
+        // Single DOM write: append all cards at once
+        adminOrdersList.appendChild(ordersFragment);
 
         // Add Inspect Details Event Listeners
         document.querySelectorAll('.admin-inspect-btn, .admin-inspect-trigger').forEach(el => {
