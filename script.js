@@ -1151,13 +1151,14 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCartUI();
 
             // Hide Checkout Modal
-            if (checkoutModal) checkoutModal.classList.remove('active');
+            closeCheckoutModal();
 
             // Render & Open Receipt Modal
             renderReceipt(createdOrder);
             if (receiptModal) {
                 receiptModal.classList.add('active');
                 document.body.style.overflow = 'hidden';
+                if (lenis) lenis.stop();
             }
 
             showToast(`🎉 Your order ${createdOrder.id} has been confirmed!`);
@@ -1209,10 +1210,20 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    if (closeReceiptBtn) closeReceiptBtn.addEventListener('click', () => {
-        receiptModal.classList.remove('active');
-        document.body.style.overflow = '';
-    });
+    function closeReceiptModal() {
+        if (receiptModal) {
+            receiptModal.classList.remove('active');
+            document.body.style.overflow = '';
+            if (lenis) lenis.start();
+        }
+    }
+
+    if (closeReceiptBtn) closeReceiptBtn.addEventListener('click', closeReceiptModal);
+    if (receiptModal) {
+        receiptModal.addEventListener('click', (e) => {
+            if (e.target === receiptModal) closeReceiptModal();
+        });
+    }
 
     if (printReceiptBtn) {
         printReceiptBtn.addEventListener('click', () => {
@@ -1222,7 +1233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (viewOrdersBtn) {
         viewOrdersBtn.addEventListener('click', () => {
-            receiptModal.classList.remove('active');
+            closeReceiptModal();
             openHistoryModal();
         });
     }
