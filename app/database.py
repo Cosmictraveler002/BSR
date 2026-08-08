@@ -38,7 +38,10 @@ def init_firestore():
 
         cred = None
         if settings.FIREBASE_CREDENTIALS_JSON:
-            cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
+            raw_json = settings.FIREBASE_CREDENTIALS_JSON.strip()
+            cred_dict = json.loads(raw_json)
+            if "private_key" in cred_dict and isinstance(cred_dict["private_key"], str):
+                cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
             cred = service_account.Credentials.from_service_account_info(cred_dict)
         elif os.path.exists(settings.FIREBASE_CREDENTIALS_PATH):
             cred = service_account.Credentials.from_service_account_file(settings.FIREBASE_CREDENTIALS_PATH)
