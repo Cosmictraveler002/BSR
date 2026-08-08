@@ -2140,9 +2140,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         sessionStorage.removeItem('bsr_admin_logged_in');
+        sessionStorage.removeItem('bsr_admin_access_token');
         sessionStorage.removeItem('bsr_admin_last_activity');
         sessionStorage.removeItem('bsr_csrf_token');
         localStorage.removeItem('bsr_admin_logged_in');
+        localStorage.removeItem('bsr_admin_access_token');
 
         if (adminDashboardScreen) adminDashboardScreen.classList.add('hidden');
         if (adminLoginScreen) adminLoginScreen.classList.remove('hidden');
@@ -2161,6 +2163,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (csrf) {
             headers['X-CSRF-Token'] = csrf;
         }
+        const accessToken = sessionStorage.getItem('bsr_admin_access_token') || localStorage.getItem('bsr_admin_access_token');
+        if (accessToken) {
+            headers['Authorization'] = `Bearer ${accessToken}`;
+        }
         return headers;
     }
 
@@ -2170,7 +2176,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const isLocalLoggedIn = sessionStorage.getItem('bsr_admin_logged_in') === 'true' || localStorage.getItem('bsr_admin_logged_in') === 'true';
 
         try {
-            const res = await fetch('/api/admin/me');
+            const res = await fetch('/api/admin/me', {
+                headers: getAuthHeaders()
+            });
             if (res.ok) {
                 const data = await res.json();
                 if (data.csrf_token) setCsrfToken(data.csrf_token);
@@ -2218,7 +2226,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 startAdminInactivityTracker();
             } else {
                 // Session expired or unauthenticated
-                performAdminAutoLogout('Admin session expired. Please re-login.');
+                if (isLocalLoggedIn) {
+                    performAdminAutoLogout('Admin session expired. Please re-login.');
+                } else {
+                    stopAdminInactivityTracker();
+                    stopAdminSyncSchedule();
+                    sessionStorage.removeItem('bsr_admin_logged_in');
+                    sessionStorage.removeItem('bsr_admin_access_token');
+                    sessionStorage.removeItem('bsr_csrf_token');
+                    localStorage.removeItem('bsr_admin_logged_in');
+                    localStorage.removeItem('bsr_admin_access_token');
+                    if (adminDashboardScreen) adminDashboardScreen.classList.add('hidden');
+                    if (adminLoginScreen) adminLoginScreen.classList.remove('hidden');
+                    if (adminLoginError) adminLoginError.classList.add('hidden');
+                }
             }
         } catch (err) {
             // Network fallback mode
@@ -2231,7 +2252,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 startAdminSyncSchedule();
                 startAdminInactivityTracker();
             } else {
-                stopAdminInactivityTracker();
                 stopAdminSyncSchedule();
                 adminLoginScreen.classList.remove('hidden');
                 adminDashboardScreen.classList.add('hidden');
@@ -2263,6 +2283,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.csrf_token) setCsrfToken(data.csrf_token);
+                    if (data.access_token) {
+                        sessionStorage.setItem('bsr_admin_access_token', data.access_token);
+                        localStorage.setItem('bsr_admin_access_token', data.access_token);
+                    }
                     sessionStorage.setItem('bsr_admin_logged_in', 'true');
                     showToast('🔒 Authenticated via Secure FastAPI Session!');
                     checkAdminSession();

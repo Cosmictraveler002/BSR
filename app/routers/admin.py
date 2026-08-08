@@ -182,7 +182,8 @@ def admin_login(payload: AdminLogin, request: Request, response: Response, db: S
         message="Authentication successful.",
         username=admin_username,
         role=admin_role,
-        csrf_token=csrf_token
+        csrf_token=csrf_token,
+        access_token=access_token
     )
 
 @router.post("/logout")
