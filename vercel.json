@@ -7,8 +7,7 @@
       "config": {
         "includeFiles": [
           "app/**",
-          "templates/**",
-          "serviceAccountKey.json"
+          "templates/**"
         ]
       }
     }
