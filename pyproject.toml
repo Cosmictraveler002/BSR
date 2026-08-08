@@ -5,18 +5,17 @@ description = "BSR Restaurant FastAPI Web Application"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.110.0",
-    "uvicorn[standard]>=0.28.0",
+    "uvicorn>=0.28.0",
     "sqlalchemy>=2.0.28",
-    "passlib[bcrypt]>=1.7.4",
     "bcrypt>=4.1.2",
-    "python-jose[cryptography]>=3.3.0",
+    "python-jose>=3.3.0",
     "pydantic>=2.6.4",
     "pydantic-settings>=2.2.1",
     "slowapi>=0.1.9",
     "python-multipart>=0.0.9",
     "jinja2>=3.1.2",
+    "google-cloud-firestore>=2.14.0"
 ]
 
 [tool.uv]
 package = false
-
