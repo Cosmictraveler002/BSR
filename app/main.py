@@ -47,13 +47,16 @@ app.add_middleware(SecurityHeadersMiddleware)
 allowed_origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://bsr.vercel.app"
-] if is_prod else ["*"]
+    "https://bsr.vercel.app",
+    "https://bsrv3.vercel.app",
+    "https://www.bangalirsokherrannaghor.in",
+    "https://bangalirsokherrannaghor.in"
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins if is_prod else [],
-    allow_origin_regex=r"https://.*\.vercel\.app" if is_prod else r".*",
+    allow_origins=allowed_origins if is_prod else ["*"],
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*bangalirsokherrannaghor\.in",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
