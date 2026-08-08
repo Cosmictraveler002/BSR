@@ -48,7 +48,9 @@ app.add_middleware(SecurityHeadersMiddleware)
 allowed_origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "https://bsr.vercel.app"
+    "https://bsr.vercel.app",
+    "https://www.bangalirsokherrannaghor.in",
+    "https://bangalirsokherrannaghor.in"
 ] if is_prod else ["*"]
 
 app.add_middleware(
