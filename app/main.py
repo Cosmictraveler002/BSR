@@ -155,9 +155,8 @@ def init_db_and_seed_admin():
 
 def _seed_admin_firestore():
     """Seeds default admin accounts directly into Firestore (Vercel production)."""
-    from app.core.firestore_db import get_document, save_document
     try:
-        # Check if admin account already exists in Firestore
+        from app.core.firestore_db import get_document, save_document
         admin_doc = get_document("admin_users", "admin")
         if not admin_doc:
             hashed_admin = get_password_hash("bsr@admin2026")
@@ -175,7 +174,6 @@ def _seed_admin_firestore():
             save_document("admin_users", "admin", admin_data)
             print("[+] [BSR Vercel] Seeded default admin account to Firestore.")
 
-        # Check if SuperAdmin account already exists
         super_doc = get_document("admin_users", "SuperAdmin")
         if not super_doc:
             hashed_super = get_password_hash("bSr@admin2869")
@@ -192,9 +190,8 @@ def _seed_admin_firestore():
             }
             save_document("admin_users", "SuperAdmin", super_data)
             print("[+] [BSR Vercel] Seeded SuperAdmin account to Firestore.")
-
     except Exception as e:
-        print(f"[!] [BSR Vercel] Error seeding admin to Firestore: {e}")
+        print(f"[!] [BSR Vercel] Firestore seeding skipped: {e}")
 
 
 # Execute DB initialization safely on import
