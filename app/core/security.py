@@ -49,8 +49,18 @@ def generate_csrf_token() -> str:
     """Generates a cryptographically secure CSRF token."""
     return secrets.token_hex(32)
 
-def log_audit(db: Session, ip_address: str, username: str, action: str, details: Optional[str] = None):
-    """Utility function to append entries to the server AuditLog."""
+def log_audit(db: Optional[Session], ip_address: str, username: str, action: str, details: Optional[str] = None):
+    """Utility function to append entries to the server AuditLog.
+    On Vercel, saves directly to Firestore. Locally, saves to SQLite + syncs to Firestore."""
+    if settings.IS_VERCEL:
+        # Vercel: save directly to Firestore only
+        from app.core.firestore_db import save_audit_log_firestore
+        save_audit_log_firestore(ip_address, username, action, details)
+        return
+
+    # Local: save to SQLite and sync to Firestore
+    if db is None:
+        return
     try:
         log_entry = AuditLog(
             ip_address=ip_address or "unknown",
@@ -64,7 +74,8 @@ def log_audit(db: Session, ip_address: str, username: str, action: str, details:
         from app.core.firestore_db import save_document
         save_document("audit_logs", str(log_entry.id), log_entry.to_dict())
     except Exception as e:
-        db.rollback()
+        if db:
+            db.rollback()
         print(f"Error recording audit log: {e}")
 
 def get_client_ip(request: Request) -> str:
@@ -78,6 +89,7 @@ def get_current_admin(request: Request, db: Session = Depends(get_db)) -> AdminU
     """
     Dependency that enforces valid authentication for admin routes.
     Checks HTTPOnly session cookie first, then Authorization Header fallback.
+    On Vercel, validates against Firestore instead of SQLite.
     """
     token = request.cookies.get(settings.COOKIE_NAME)
     if not token:
@@ -106,6 +118,19 @@ def get_current_admin(request: Request, db: Session = Depends(get_db)) -> AdminU
             detail="Session expired or token verification failed. Please login again.",
         )
 
+    if settings.IS_VERCEL:
+        # Vercel: look up admin in Firestore
+        from app.core.firestore_db import query_document_by_field_ci
+        admin_doc = query_document_by_field_ci("admin_users", "username", username)
+        if not admin_doc or not admin_doc.get("is_active", False):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Admin user account is inactive or no longer exists.",
+            )
+        # Return a lightweight object that has the needed attributes
+        return _dict_to_admin_proxy(admin_doc)
+
+    # Local: use SQLAlchemy
     admin = db.query(AdminUser).filter(func.lower(AdminUser.username) == username.lower(), AdminUser.is_active == True).first()
     if not admin:
         raise HTTPException(
@@ -131,6 +156,14 @@ def get_current_admin_optional(request: Request, db: Session = Depends(get_db)) 
         username: str = payload.get("sub")
         if not username:
             return None
+
+        if settings.IS_VERCEL:
+            from app.core.firestore_db import query_document_by_field_ci
+            admin_doc = query_document_by_field_ci("admin_users", "username", username)
+            if admin_doc and admin_doc.get("is_active", False):
+                return _dict_to_admin_proxy(admin_doc)
+            return None
+
         admin = db.query(AdminUser).filter(func.lower(AdminUser.username) == username.lower(), AdminUser.is_active == True).first()
         return admin
     except Exception:
@@ -139,10 +172,11 @@ def get_current_admin_optional(request: Request, db: Session = Depends(get_db)) 
 def require_roles(allowed_roles: list):
     """Dependency checker enforcing specific RBAC roles for protected endpoints."""
     def role_checker(current_admin: AdminUser = Depends(get_current_admin)) -> AdminUser:
-        if current_admin.role not in allowed_roles:
+        admin_role = current_admin.role if hasattr(current_admin, 'role') else getattr(current_admin, '_role', 'Staff')
+        if admin_role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access denied. Privilege level '{current_admin.role}' is insufficient for this action."
+                detail=f"Access denied. Privilege level '{admin_role}' is insufficient for this action."
             )
         return current_admin
     return role_checker
@@ -176,3 +210,42 @@ def verify_csrf_token(request: Request):
         status_code=status.HTTP_403_FORBIDDEN,
         detail="CSRF security validation failed. Header missing."
     )
+
+
+class _AdminProxy:
+    """Lightweight proxy object that mimics AdminUser model attributes from a Firestore dict.
+    Used on Vercel where SQLAlchemy models aren't hydrated from a live DB session."""
+
+    def __init__(self, data: dict):
+        self._data = data
+        self.id = data.get("id", 0)
+        if isinstance(self.id, str):
+            try:
+                self.id = int(self.id)
+            except (ValueError, TypeError):
+                pass
+        self.username = data.get("username", "")
+        self.hashed_password = data.get("hashed_password", "")
+        self.role = data.get("role", "Staff")
+        self.outlet_id = data.get("outlet_id", "OUTLET-01")
+        self.is_active = data.get("is_active", True)
+        self.created_at = data.get("created_at")
+        self.last_login = data.get("last_login")
+        if isinstance(self.created_at, str):
+            try:
+                self.created_at = datetime.datetime.fromisoformat(self.created_at)
+            except Exception:
+                self.created_at = datetime.datetime.utcnow()
+        if isinstance(self.last_login, str):
+            try:
+                self.last_login = datetime.datetime.fromisoformat(self.last_login)
+            except Exception:
+                self.last_login = None
+
+    def to_dict(self):
+        return self._data
+
+
+def _dict_to_admin_proxy(data: dict) -> _AdminProxy:
+    """Converts a Firestore document dict to an AdminProxy object."""
+    return _AdminProxy(data)

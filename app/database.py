@@ -1,11 +1,17 @@
 import os
 import json
 from typing import Optional
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
 
-# Create engine with connect_args for SQLite threading safety
+# ---------------------------------------------------------------------------
+# SQLAlchemy Engine (Local development with SQLite)
+# On Vercel, SQLite is ephemeral. We still create a minimal engine so that
+# imports of Base / get_db don't crash, but all production reads/writes go
+# through Firestore helpers instead.
+# ---------------------------------------------------------------------------
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
@@ -23,7 +29,11 @@ def get_db():
         db.close()
 
 
-# --- Google Cloud Firestore Database Connection ---
+# ---------------------------------------------------------------------------
+# Google Cloud Firestore Database Connection
+# On Vercel, credentials come from FIREBASE_CREDENTIALS_JSON env variable.
+# Locally, they can come from a file on disk.
+# ---------------------------------------------------------------------------
 firestore_client: Optional[object] = None
 
 def init_firestore():
@@ -37,11 +47,14 @@ def init_firestore():
         from google.oauth2 import service_account
 
         cred = None
+        # Priority 1: JSON string from env variable (Vercel production)
         if settings.FIREBASE_CREDENTIALS_JSON:
             cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
             cred = service_account.Credentials.from_service_account_info(cred_dict)
+        # Priority 2: Local file path
         elif os.path.exists(settings.FIREBASE_CREDENTIALS_PATH):
             cred = service_account.Credentials.from_service_account_file(settings.FIREBASE_CREDENTIALS_PATH)
+        # Priority 3: GOOGLE_APPLICATION_CREDENTIALS env
         elif os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and os.path.exists(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")):
             cred = service_account.Credentials.from_service_account_file(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 

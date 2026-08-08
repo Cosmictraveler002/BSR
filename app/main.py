@@ -13,8 +13,9 @@ from app.database import engine, Base, SessionLocal
 from app.models import AdminUser
 from app.routers import public, admin, reservations_view
 
-# Database tables initialization
-Base.metadata.create_all(bind=engine)
+# Database tables initialization (SQLite — only locally, skipped on Vercel)
+if not settings.IS_VERCEL:
+    Base.metadata.create_all(bind=engine)
 
 is_prod = settings.ENVIRONMENT.lower() == "production"
 
@@ -75,6 +76,12 @@ from sqlalchemy import func, text
 
 def init_db_and_seed_admin():
     """Initializes Database tables and seeds default admin accounts if not present."""
+    if settings.IS_VERCEL:
+        # On Vercel: seed admin accounts directly into Firestore
+        _seed_admin_firestore()
+        return
+
+    # Local development: seed via SQLite + sync to Firestore
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
@@ -134,6 +141,51 @@ def init_db_and_seed_admin():
         print(f"Error seeding admin user: {e}")
     finally:
         db.close()
+
+
+def _seed_admin_firestore():
+    """Seeds default admin accounts directly into Firestore (Vercel production)."""
+    from app.core.firestore_db import get_document, save_document
+    try:
+        # Check if admin account already exists in Firestore
+        admin_doc = get_document("admin_users", "admin")
+        if not admin_doc:
+            hashed_admin = get_password_hash("bsr@admin2026")
+            admin_data = {
+                "id": "admin",
+                "username": "admin",
+                "username_lower": "admin",
+                "hashed_password": hashed_admin,
+                "role": "Super Admin",
+                "outlet_id": "OUTLET-01",
+                "is_active": True,
+                "created_at": datetime.datetime.utcnow().isoformat(),
+                "last_login": None,
+            }
+            save_document("admin_users", "admin", admin_data)
+            print("[+] [BSR Vercel] Seeded default admin account to Firestore.")
+
+        # Check if SuperAdmin account already exists
+        super_doc = get_document("admin_users", "SuperAdmin")
+        if not super_doc:
+            hashed_super = get_password_hash("bSr@admin2869")
+            super_data = {
+                "id": "SuperAdmin",
+                "username": "SuperAdmin",
+                "username_lower": "superadmin",
+                "hashed_password": hashed_super,
+                "role": "Super Admin",
+                "outlet_id": "OUTLET-01",
+                "is_active": True,
+                "created_at": datetime.datetime.utcnow().isoformat(),
+                "last_login": None,
+            }
+            save_document("admin_users", "SuperAdmin", super_data)
+            print("[+] [BSR Vercel] Seeded SuperAdmin account to Firestore.")
+
+    except Exception as e:
+        print(f"[!] [BSR Vercel] Error seeding admin to Firestore: {e}")
+
 
 # Execute DB initialization immediately
 init_db_and_seed_admin()

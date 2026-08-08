@@ -19,10 +19,14 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_USER: str = os.getenv("ADMIN_USERNAME", "admin")
     DEFAULT_ADMIN_PASS: str = os.getenv("ADMIN_PASSWORD", "bsr@admin2026")
 
-    # Database - automatically use /tmp directory in serverless environments (Vercel)
+    # Vercel Detection — set automatically by Vercel runtime
+    IS_VERCEL: bool = bool(os.getenv("VERCEL", ""))
+
+    # Database - automatically use in-memory SQLite in serverless environments (Vercel)
+    # On Vercel, SQLite is not used for persistent storage — Firestore is the primary DB
     DATABASE_URL: str = os.getenv(
         "DATABASE_URL", 
-        f"sqlite:///{'/tmp/bsr_restaurant.db' if os.getenv('VERCEL') else './bsr_restaurant.db'}"
+        "sqlite:///:memory:" if os.getenv("VERCEL") else "sqlite:///./bsr_restaurant.db"
     )
 
     # Firestore Database Configuration
@@ -30,7 +34,8 @@ class Settings(BaseSettings):
     FIREBASE_DATABASE_ID: str = os.getenv("FIREBASE_DATABASE_ID", "(default)")
     FIREBASE_CREDENTIALS_PATH: str = os.getenv("FIREBASE_CREDENTIALS_PATH", "serviceAccountKey.json")
     FIREBASE_CREDENTIALS_JSON: str = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
-    USE_FIRESTORE: bool = os.getenv("USE_FIRESTORE", "false").lower() in ("true", "1", "yes")
+    # On Vercel, default to Firestore. Locally, default to false unless overridden.
+    USE_FIRESTORE: bool = os.getenv("USE_FIRESTORE", "true" if os.getenv("VERCEL") else "false").lower() in ("true", "1", "yes")
 
     # Firebase Web App Public SDK Credentials
     FIREBASE_API_KEY: str = os.getenv("FIREBASE_API_KEY", "AIzaSyBC7weuYk4SmtuouPAZyPWxgdfvGE2wzJc")
