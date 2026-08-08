@@ -1,19 +1,19 @@
-"""
-Temporary Diagnostic Entry Point
-Tests if the basic Vercel Python runtime and FastAPI serve requests.
-"""
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from http.server import BaseHTTPRequestHandler
+import json
 
-app = FastAPI(title="BSR Diagnostic Test")
+class handler(BaseHTTPRequestHandler):
 
-@app.api_route("/{full_path:path}", methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS", "HEAD"])
-def diagnostic_handler(full_path: str):
-    return JSONResponse(
-        status_code=200,
-        content={
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        response_data = {
             "status": "ok",
-            "message": "FastAPI is running successfully on Vercel!",
-            "path_requested": full_path
+            "message": "Pure Python handler works on Vercel!",
+            "path": self.path
         }
-    )
+        self.wfile.write(json.dumps(response_data).encode('utf-8'))
+        return
+
+    def do_POST(self):
+        self.do_GET()
