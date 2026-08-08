@@ -580,9 +580,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (show) {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            if (lenis) lenis.stop();
         } else {
             modal.classList.remove('active');
             document.body.style.overflow = '';
+            if (lenis) lenis.start();
         }
     }
 
@@ -995,19 +997,24 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCheckoutSummary();
         checkoutModal.classList.add('active');
         document.body.style.overflow = 'hidden';
+        if (lenis) lenis.stop();
+    }
+
+    function closeCheckoutModal() {
+        if (checkoutModal) {
+            checkoutModal.classList.remove('active');
+            document.body.style.overflow = '';
+            if (lenis) lenis.start();
+        }
     }
 
     if (checkoutBtn) checkoutBtn.addEventListener('click', openCheckoutModal);
-    if (closeCheckoutBtn) closeCheckoutBtn.addEventListener('click', () => {
-        checkoutModal.classList.remove('active');
-        document.body.style.overflow = '';
-    });
+    if (closeCheckoutBtn) closeCheckoutBtn.addEventListener('click', closeCheckoutModal);
 
     if (checkoutModal) {
         checkoutModal.addEventListener('click', (e) => {
             if (e.target === checkoutModal) {
-                checkoutModal.classList.remove('active');
-                document.body.style.overflow = '';
+                closeCheckoutModal();
             }
         });
     }
@@ -1295,12 +1302,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         historyModal.classList.add('active');
         document.body.style.overflow = 'hidden';
+        if (lenis) lenis.stop();
     }
 
     if (ordersHistoryBtn) ordersHistoryBtn.addEventListener('click', openHistoryModal);
     if (closeHistoryBtn) closeHistoryBtn.addEventListener('click', () => {
         historyModal.classList.remove('active');
         document.body.style.overflow = '';
+        if (lenis) lenis.start();
     });
 
     // --- Category Filters for Dishes ---
