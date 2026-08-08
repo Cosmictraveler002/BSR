@@ -51,7 +51,7 @@ def init_firestore():
         kwargs = {}
         if settings.FIREBASE_PROJECT_ID:
             kwargs["project"] = settings.FIREBASE_PROJECT_ID
-        if settings.FIREBASE_DATABASE_ID:
+        if settings.FIREBASE_DATABASE_ID and settings.FIREBASE_DATABASE_ID not in ("default", "(default)"):
             kwargs["database"] = settings.FIREBASE_DATABASE_ID
         if cred:
             kwargs["credentials"] = cred

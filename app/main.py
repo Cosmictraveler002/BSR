@@ -133,6 +133,108 @@ def init_db_and_seed_admin():
         if super_acc:
             save_document("admin_users", str(super_acc.id or "SuperAdmin"), super_acc.to_dict())
 
+        # Seed default Orders if database table is empty
+        if db.query(Order).count() == 0:
+            sample_orders = [
+                Order(
+                    id="BSR-2026-A1B2",
+                    customer_name="Anirban Roy",
+                    customer_phone="+91 98765 43210",
+                    order_type="Dine-In",
+                    table_number="Table 04",
+                    items_json=json.dumps([
+                        {"id": "1", "name": "Sorshe Ilish", "price": 850.0, "qty": 1},
+                        {"id": "6", "name": "Basmati Rice", "price": 120.0, "qty": 2},
+                        {"id": "4", "name": "Artisanal Mishti", "price": 350.0, "qty": 1}
+                    ]),
+                    subtotal=1440.0,
+                    discount=144.0,
+                    coupon_code="BENGAL10",
+                    total=1296.0,
+                    status="Confirmed",
+                    outlet_id="OUTLET-01"
+                ),
+                Order(
+                    id="BSR-2026-C3D4",
+                    customer_name="Priyanka Chatterjee",
+                    customer_phone="+91 98310 12345",
+                    order_type="Delivery",
+                    delivery_address="A9, Phase 3, Kalyani, Nadia, WB - 741235",
+                    items_json=json.dumps([
+                        {"id": "2", "name": "Kosha Mangsho", "price": 750.0, "qty": 2},
+                        {"id": "7", "name": "Luchi", "price": 40.0, "qty": 8}
+                    ]),
+                    subtotal=1820.0,
+                    discount=0.0,
+                    total=1820.0,
+                    status="In Preparation",
+                    outlet_id="OUTLET-01"
+                )
+            ]
+            db.add_all(sample_orders)
+            db.commit()
+            for o in sample_orders:
+                save_document("orders", o.id, o.to_dict())
+
+        # Seed default Reservations if database table is empty
+        if db.query(Reservation).count() == 0:
+            today_str = datetime.date.today().isoformat()
+            sample_res = [
+                Reservation(
+                    guest_name="Dr. Debasis Banerjee",
+                    phone="+91 98300 99887",
+                    email="debasis.b@example.com",
+                    guests_count=4,
+                    reservation_date=today_str,
+                    reservation_time="07:30 PM (Dinner)",
+                    special_request="Window table preferred",
+                    event_type="Table Booking",
+                    status="Confirmed",
+                    outlet_id="OUTLET-01"
+                ),
+                Reservation(
+                    guest_name="Sutapa Sengupta",
+                    phone="+91 91234 56789",
+                    email="sutapa.s@example.com",
+                    guests_count=6,
+                    reservation_date=today_str,
+                    reservation_time="01:30 PM (Lunch)",
+                    special_request="Anniversary celebration setup",
+                    event_type="Table Booking",
+                    status="Pending",
+                    outlet_id="OUTLET-01"
+                )
+            ]
+            db.add_all(sample_res)
+            db.commit()
+            for r in sample_res:
+                save_document("reservations", str(r.id), r.to_dict())
+
+        # Seed default Employees if database table is empty
+        if db.query(Employee).count() == 0:
+            sample_emp = [
+                Employee(
+                    name="Subhashish Roy",
+                    position="Head Chef",
+                    department="Kitchen",
+                    phone="+91 98000 11111",
+                    status="Active",
+                    outlet_id="OUTLET-01"
+                ),
+                Employee(
+                    name="Rupali Maitra",
+                    position="Floor Manager",
+                    department="Service",
+                    phone="+91 98000 22222",
+                    status="Active",
+                    outlet_id="OUTLET-01"
+                )
+            ]
+            db.add_all(sample_emp)
+            db.commit()
+            for e in sample_emp:
+                save_document("employees", str(e.id), e.to_dict())
+
     except Exception as e:
         print(f"Error seeding admin user: {e}")
     finally:
