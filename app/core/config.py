@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Firestore Database Configuration
     FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "bangalir-sokher-rannaghor")
-    FIREBASE_DATABASE_ID: str = os.getenv("FIREBASE_DATABASE_ID", "(default)")
+    FIREBASE_DATABASE_ID: str = os.getenv("FIREBASE_DATABASE_ID", "default")
     FIREBASE_CREDENTIALS_PATH: str = os.getenv("FIREBASE_CREDENTIALS_PATH", "serviceAccountKey.json")
     FIREBASE_CREDENTIALS_JSON: str = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
     # On Vercel, default to Firestore. Locally, default to false unless overridden.
