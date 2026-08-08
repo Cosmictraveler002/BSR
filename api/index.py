@@ -1,19 +1,34 @@
-from http.server import BaseHTTPRequestHandler
-import json
+"""
+Vercel Serverless Entry Point
+Exports the FastAPI ASGI app for Vercel's Python runtime.
+Includes diagnostic fallback handler to expose startup errors as JSON.
+"""
+import sys
+import os
 
-class handler(BaseHTTPRequestHandler):
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
-        response_data = {
-            "status": "ok",
-            "message": "Pure Python handler works on Vercel!",
-            "path": self.path
-        }
-        self.wfile.write(json.dumps(response_data).encode('utf-8'))
-        return
+try:
+    from app.main import app
+except Exception as err:
+    import traceback
+    error_trace = traceback.format_exc()
+    print(f"[!] Critical startup error in app.main: {err}\n{error_trace}")
+    
+    from fastapi import FastAPI
+    from fastapi.responses import JSONResponse
 
-    def do_POST(self):
-        self.do_GET()
+    app = FastAPI(title="BSR Diagnostic Fallback")
+
+    @app.api_route("/{full_path:path}", methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS", "HEAD"])
+    def fallback_error_handler(full_path: str):
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Application Startup Error",
+                "detail": str(err),
+                "traceback": [line.strip() for line in error_trace.splitlines() if line.strip()]
+            }
+        )
