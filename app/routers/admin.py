@@ -74,28 +74,66 @@ def admin_login(payload: AdminLogin, request: Request, response: Response, db: S
 
     if settings.IS_VERCEL:
         admin_doc = query_document_by_field_ci("admin_users", "username", username)
-        if not admin_doc or not admin_doc.get("is_active", True):
-            record_failed_attempt(ip)
-            log_audit(db, ip, username, "FAILED_LOGIN", f"Invalid login credentials attempt for user '{username}'")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Admin Username or Password!"
-            )
-        admin_username = admin_doc.get("username", username)
-        admin_hashed_pw = admin_doc.get("hashed_password", "")
-        admin_role = admin_doc.get("role", "Super Admin")
-        doc_id = admin_doc.get("id", admin_username)
-
-        if not verify_password(password, admin_hashed_pw):
-            record_failed_attempt(ip)
-            log_audit(db, ip, username, "FAILED_LOGIN", f"Invalid login credentials attempt for user '{username}'")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Admin Username or Password!"
-            )
         
-        # Update last login timestamp in Firestore
-        update_document("admin_users", str(doc_id), {"last_login": datetime.datetime.utcnow().isoformat()})
+        if not admin_doc:
+            # Fallback for default master credentials if Firestore doc is missing
+            if username.lower() == "admin" and password == "bsr@admin2026":
+                admin_username = "admin"
+                admin_role = "Super Admin"
+                save_document("admin_users", "admin", {
+                    "id": "admin",
+                    "username": "admin",
+                    "username_lower": "admin",
+                    "hashed_password": get_password_hash("bsr@admin2026"),
+                    "role": "Super Admin",
+                    "outlet_id": "OUTLET-01",
+                    "is_active": True,
+                    "created_at": datetime.datetime.utcnow().isoformat(),
+                    "last_login": datetime.datetime.utcnow().isoformat()
+                })
+            elif username.lower() == "superadmin" and password == "bSr@admin2869":
+                admin_username = "SuperAdmin"
+                admin_role = "Super Admin"
+                save_document("admin_users", "SuperAdmin", {
+                    "id": "SuperAdmin",
+                    "username": "SuperAdmin",
+                    "username_lower": "superadmin",
+                    "hashed_password": get_password_hash("bSr@admin2869"),
+                    "role": "Super Admin",
+                    "outlet_id": "OUTLET-01",
+                    "is_active": True,
+                    "created_at": datetime.datetime.utcnow().isoformat(),
+                    "last_login": datetime.datetime.utcnow().isoformat()
+                })
+            else:
+                record_failed_attempt(ip)
+                log_audit(db, ip, username, "FAILED_LOGIN", f"Invalid login credentials attempt for user '{username}'")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid Admin Username or Password!"
+                )
+        else:
+            if not admin_doc.get("is_active", True):
+                record_failed_attempt(ip)
+                log_audit(db, ip, username, "FAILED_LOGIN", f"Inactive account login attempt for user '{username}'")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Admin account is inactive."
+                )
+            admin_username = admin_doc.get("username", username)
+            admin_hashed_pw = admin_doc.get("hashed_password", "")
+            admin_role = admin_doc.get("role", "Super Admin")
+            doc_id = admin_doc.get("id", admin_username)
+
+            if not verify_password(password, admin_hashed_pw):
+                record_failed_attempt(ip)
+                log_audit(db, ip, username, "FAILED_LOGIN", f"Invalid login credentials attempt for user '{username}'")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid Admin Username or Password!"
+                )
+            
+            update_document("admin_users", str(doc_id), {"last_login": datetime.datetime.utcnow().isoformat()})
 
     else:
         admin = db.query(AdminUser).filter(func.lower(AdminUser.username) == username.lower(), AdminUser.is_active == True).first()
