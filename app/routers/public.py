@@ -32,6 +32,40 @@ def get_firebase_web_config():
         "measurementId": settings.FIREBASE_MEASUREMENT_ID
     }
 
+@router.get("/debug/firestore")
+def debug_firestore_status():
+    """Diagnostic endpoint to inspect Google Cloud Firestore connection status on serverless host."""
+    import os
+    has_json_env = bool(settings.FIREBASE_CREDENTIALS_JSON and len(settings.FIREBASE_CREDENTIALS_JSON.strip()) > 10)
+    has_file_env = bool(settings.FIREBASE_CREDENTIALS_PATH and os.path.exists(settings.FIREBASE_CREDENTIALS_PATH))
+    
+    status_info = {
+        "use_firestore_setting": settings.USE_FIRESTORE,
+        "firebase_project_id": settings.FIREBASE_PROJECT_ID,
+        "has_credentials_json_env": has_json_env,
+        "has_credentials_file": has_file_env,
+        "firestore_client_connected": False,
+        "orders_count": 0,
+        "reservations_count": 0,
+        "error": None
+    }
+
+    try:
+        from app.database import get_firestore_db
+        db = get_firestore_db()
+        if db:
+            status_info["firestore_client_connected"] = True
+            orders = list(db.collection("orders").limit(10).stream())
+            reservations = list(db.collection("reservations").limit(10).stream())
+            status_info["orders_count"] = len(orders)
+            status_info["reservations_count"] = len(reservations)
+        else:
+            status_info["error"] = "Firestore Client returned None. Check FIREBASE_CREDENTIALS_JSON in Vercel Environment Variables."
+    except Exception as e:
+        status_info["error"] = str(e)
+
+    return status_info
+
 # Available Coupons Registry
 VALID_COUPONS = {
     "BENGAL10": {"rate": 0.10, "message": "10% Bengal Festival Discount Applied!"},
