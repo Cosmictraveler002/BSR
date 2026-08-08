@@ -1575,11 +1575,22 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(follower);
         }
 
-        document.addEventListener('mousemove', (e) => {
-            cursor.style.left = `${e.clientX}px`;
-            cursor.style.top = `${e.clientY}px`;
+        let mouseX = 0, mouseY = 0;
+        let isCursorPending = false;
 
-            if (e.target.closest('#hero')) {
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+
+            if (!isCursorPending) {
+                isCursorPending = true;
+                requestAnimationFrame(() => {
+                    cursor.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%)`;
+                    isCursorPending = false;
+                });
+            }
+
+            if (e.target && e.target.closest && e.target.closest('#hero')) {
                 cursor.classList.add('hero-hide');
             } else {
                 cursor.classList.remove('hero-hide');
