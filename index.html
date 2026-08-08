@@ -958,30 +958,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 
-    <!-- Firebase Web App SDK & Analytics -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBC7weuYk4SmtuouPAZyPWxgdfvGE2wzJc",
-            authDomain: "bangalir-sokher-rannaghor.firebaseapp.com",
-            projectId: "bangalir-sokher-rannaghor",
-            storageBucket: "bangalir-sokher-rannaghor.firebasestorage.app",
-            messagingSenderId: "789159534550",
-            appId: "1:789159534550:web:b8af2da0f0fe58ed8d8e77",
-            measurementId: "G-TR6LB591KX"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        try {
-            getAnalytics(app);
-        } catch (e) {
-            console.warn('[Firebase Analytics] Pending setup:', e);
-        }
-        window.firebaseApp = app;
-    </script>
-
     <!-- Pure Vanilla JS File -->
     <script src="script.js"></script>
 </body>

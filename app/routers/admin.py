@@ -200,51 +200,6 @@ def get_admin_orders(
 
     orders = query.order_by(Order.created_at.desc()).all()
 
-    if not orders:
-        fs_docs = query_documents("orders", order_by="created_at", descending=True, limit=100)
-        result = []
-        for doc in fs_docs:
-            if status_filter and status_filter != "ALL" and doc.get("status") != status_filter:
-                continue
-            if type_filter and type_filter != "ALL" and doc.get("order_type") != type_filter:
-                continue
-            if outlet_filter and outlet_filter != "ALL" and doc.get("outlet_id", "OUTLET-01") != outlet_filter:
-                continue
-            if search:
-                st = search.strip().lower()
-                if st not in str(doc.get("id", "")).lower() and st not in str(doc.get("customer_name", "")).lower() and st not in str(doc.get("customer_phone", "")).lower():
-                    continue
-
-            items_raw = doc.get("items_json", "[]")
-            if isinstance(items_raw, str):
-                try:
-                    items_data = json.loads(items_raw)
-                except Exception:
-                    items_data = []
-            else:
-                items_data = items_raw or []
-                
-            items = [OrderItemSchema(**i) if isinstance(i, dict) else i for i in items_data]
-            result.append(
-                OrderOut(
-                    id=str(doc.get("id")),
-                    customer_name=doc.get("customer_name", ""),
-                    customer_phone=doc.get("customer_phone", ""),
-                    order_type=doc.get("order_type", "Delivery"),
-                    delivery_address=doc.get("delivery_address"),
-                    table_number=doc.get("table_number"),
-                    items=items,
-                    subtotal=float(doc.get("subtotal", 0.0)),
-                    discount=float(doc.get("discount", 0.0)),
-                    coupon_code=doc.get("coupon_code"),
-                    total=float(doc.get("total", 0.0)),
-                    status=doc.get("status", "Confirmed"),
-                    outlet_id=doc.get("outlet_id", "OUTLET-01"),
-                    created_at=doc.get("created_at")
-                )
-            )
-        return result
-
     result = []
     for o in orders:
         items = [OrderItemSchema(**i) for i in json.loads(o.items_json)]
@@ -392,38 +347,7 @@ def get_admin_reservations(
             (Reservation.email.ilike(s_term)) |
             (Reservation.special_request.ilike(s_term))
         )
-    reservations = query.order_by(Reservation.created_at.desc()).all()
-    if not reservations:
-        fs_docs = query_documents("reservations", order_by="created_at", descending=True, limit=100)
-        result = []
-        for doc in fs_docs:
-            if outlet_filter and outlet_filter != "ALL" and doc.get("outlet_id", "OUTLET-01") != outlet_filter:
-                continue
-            if search:
-                st = search.strip().lower()
-                if (st not in str(doc.get("guest_name", "")).lower() and
-                    st not in str(doc.get("phone", "")).lower() and
-                    st not in str(doc.get("email", "")).lower() and
-                    st not in str(doc.get("special_request", "")).lower()):
-                    continue
-            result.append(
-                ReservationOut(
-                    id=doc.get("id"),
-                    guest_name=doc.get("guest_name", ""),
-                    phone=doc.get("phone", ""),
-                    email=doc.get("email"),
-                    guests_count=int(doc.get("guests_count", 2)),
-                    reservation_date=str(doc.get("reservation_date", "")),
-                    reservation_time=str(doc.get("reservation_time", "")),
-                    special_request=doc.get("special_request"),
-                    event_type=doc.get("event_type", "Table Booking"),
-                    status=doc.get("status", "Pending"),
-                    outlet_id=doc.get("outlet_id", "OUTLET-01"),
-                    created_at=doc.get("created_at")
-                )
-            )
-        return result
-    return reservations
+    return query.order_by(Reservation.created_at.desc()).all()
 
 @router.patch("/reservations/{res_id}/status", response_model=ReservationOut, dependencies=[Depends(verify_csrf_token)])
 def update_reservation_status(
