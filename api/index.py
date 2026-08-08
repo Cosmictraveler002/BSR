@@ -5,6 +5,7 @@ Includes VercelPathMiddleware to handle original request paths in ASGI scope.
 """
 import sys
 import os
+from urllib.parse import urlparse
 
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root_dir not in sys.path:
@@ -22,19 +23,40 @@ try:
             if scope["type"] == "http":
                 headers = dict(scope.get("headers", []))
                 
-                # Debug logging to stdout (visible in Vercel Logs dashboard)
-                headers_str = {k.decode("utf-8", errors="ignore"): v.decode("utf-8", errors="ignore") for k, v in headers.items()}
-                print(f"[debug-routing] Path: {scope.get('path')} | Headers: {headers_str}")
+                # Check headers for original requested path
+                original_path = None
                 
-                # Check for Vercel original request path header
-                matched_path = headers.get(b"x-matched-path")
-                if matched_path:
-                    scope["path"] = matched_path.decode("utf-8")
-                    print(f"[debug-routing] Overrode path using x-matched-path: {scope['path']}")
+                # Try x-vercel-forwarded-path (Vercel standard for original path)
+                if b"x-vercel-forwarded-path" in headers:
+                    original_path = headers[b"x-vercel-forwarded-path"].decode("utf-8")
+                # Try x-forwarded-path
+                elif b"x-forwarded-path" in headers:
+                    original_path = headers[b"x-forwarded-path"].decode("utf-8")
+                # Try extracting path from x-forwarded-url
+                elif b"x-forwarded-url" in headers:
+                    url_str = headers[b"x-forwarded-url"].decode("utf-8")
+                    original_path = urlparse(url_str).path
+                # Try extracting from x-original-url
+                elif b"x-original-url" in headers:
+                    url_str = headers[b"x-original-url"].decode("utf-8")
+                    original_path = urlparse(url_str).path
+                
+                if original_path:
+                    # Update ASGI scope path to the original path so FastAPI router can match it
+                    scope["path"] = original_path
+                    print(f"[debug-routing] Overrode ASGI scope path to: {scope['path']}")
                 else:
-                    # Alternative header check
-                    route_matches = headers.get(b"x-now-route-matches")
-                    print(f"[debug-routing] x-matched-path not found. x-now-route-matches: {route_matches}")
+                    # Fallback to query params if Vercel mapped path parameters
+                    query_string = scope.get("query_string", b"").decode("utf-8")
+                    if "path=" in query_string:
+                        # Extract the path parameter from query parameters
+                        from urllib.parse import parse_qs
+                        params = parse_qs(query_string)
+                        if "path" in params and params["path"]:
+                            # Reconstruct path as /api/ + path
+                            val = params["path"][0]
+                            scope["path"] = f"/api/{val.lstrip('/')}"
+                            print(f"[debug-routing] Fallback query param path override to: {scope['path']}")
                     
             await self.app(scope, receive, send)
 
