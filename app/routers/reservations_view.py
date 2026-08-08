@@ -12,7 +12,10 @@ from app.core.security import log_audit, get_client_ip
 
 router = APIRouter(prefix="", tags=["Jinja Multi-Step Reservation"])
 
-templates = Jinja2Templates(directory="templates")
+if os.path.exists("templates"):
+    templates = Jinja2Templates(directory="templates")
+else:
+    templates = None
 
 SESSION_COOKIE_NAME = "bsr_res_session"
 

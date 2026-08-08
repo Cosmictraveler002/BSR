@@ -197,13 +197,17 @@ def _seed_admin_firestore():
         print(f"[!] [BSR Vercel] Error seeding admin to Firestore: {e}")
 
 
-# Execute DB initialization immediately
-init_db_and_seed_admin()
+# Execute DB initialization safely on import
+try:
+    init_db_and_seed_admin()
+except Exception as e:
+    print(f"[!] Top-level init_db_and_seed_admin skipped/deferred: {e}")
 
 @app.on_event("startup")
 def startup_event():
     init_db_and_seed_admin()
 
-# Serve static web frontend files
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
+# Serve static web frontend files (only in local dev — Vercel CDN serves static assets directly)
+if not settings.IS_VERCEL:
+    app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
