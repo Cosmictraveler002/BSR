@@ -61,11 +61,19 @@ app.add_middleware(
     expose_headers=["X-DB-Revision", "X-DB-Last-Updated", "X-CSRF-Token"],
 )
 
+from fastapi.responses import RedirectResponse, FileResponse
+
 # Redirect /admin and /admin/ to admin.html
 @app.get("/admin", include_in_schema=False)
 @app.get("/admin/", include_in_schema=False)
 def admin_redirect():
     return RedirectResponse(url="/admin.html", status_code=303)
+
+@app.get("/admin.html", include_in_schema=False)
+def serve_admin_page():
+    if os.path.exists("admin.html"):
+        return FileResponse("admin.html")
+    return RedirectResponse(url="/")
 
 # Mount Routers
 app.include_router(public.router)
