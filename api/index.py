@@ -21,10 +21,21 @@ try:
         async def __call__(self, scope, receive, send):
             if scope["type"] == "http":
                 headers = dict(scope.get("headers", []))
-                # Vercel passes the original requested path in x-matched-path header
+                
+                # Debug logging to stdout (visible in Vercel Logs dashboard)
+                headers_str = {k.decode("utf-8", errors="ignore"): v.decode("utf-8", errors="ignore") for k, v in headers.items()}
+                print(f"[debug-routing] Path: {scope.get('path')} | Headers: {headers_str}")
+                
+                # Check for Vercel original request path header
                 matched_path = headers.get(b"x-matched-path")
                 if matched_path:
                     scope["path"] = matched_path.decode("utf-8")
+                    print(f"[debug-routing] Overrode path using x-matched-path: {scope['path']}")
+                else:
+                    # Alternative header check
+                    route_matches = headers.get(b"x-now-route-matches")
+                    print(f"[debug-routing] x-matched-path not found. x-now-route-matches: {route_matches}")
+                    
             await self.app(scope, receive, send)
 
     app = VercelPathMiddleware(app)
