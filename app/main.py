@@ -204,7 +204,6 @@ except Exception as e:
 def startup_event():
     init_db_and_seed_admin()
 
-# Serve static web frontend files (only in local dev — Vercel CDN serves static assets directly)
-if not settings.IS_VERCEL:
-    app.mount("/", StaticFiles(directory=".", html=True), name="static")
+# Serve static web frontend files as a fallback
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
