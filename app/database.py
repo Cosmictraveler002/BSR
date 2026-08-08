@@ -25,10 +25,11 @@ def get_db():
 
 # --- Google Cloud Firestore Database Connection ---
 firestore_client: Optional[object] = None
+firestore_init_error: Optional[str] = None
 
 def init_firestore():
     """Initializes Google Cloud Firestore Client."""
-    global firestore_client
+    global firestore_client, firestore_init_error
     if firestore_client is not None:
         return firestore_client
 
@@ -39,6 +40,8 @@ def init_firestore():
         cred = None
         if settings.FIREBASE_CREDENTIALS_JSON:
             raw_json = settings.FIREBASE_CREDENTIALS_JSON.strip()
+            if (raw_json.startswith("'") and raw_json.endswith("'")) or (raw_json.startswith('"') and raw_json.endswith('"')):
+                raw_json = raw_json[1:-1].strip()
             cred_dict = json.loads(raw_json)
             if "private_key" in cred_dict and isinstance(cred_dict["private_key"], str):
                 cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
@@ -58,8 +61,10 @@ def init_firestore():
 
         firestore_client = firestore.Client(**kwargs)
         print("[+] [BSR Firestore] Connected successfully to Cloud Firestore database.")
+        firestore_init_error = None
         return firestore_client
     except Exception as e:
+        firestore_init_error = str(e)
         print(f"[!] [BSR Firestore] Initialization pending/skipped: {e}")
         return None
 

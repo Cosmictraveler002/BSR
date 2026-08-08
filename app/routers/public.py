@@ -51,7 +51,7 @@ def debug_firestore_status():
     }
 
     try:
-        from app.database import get_firestore_db
+        from app.database import get_firestore_db, firestore_init_error
         db = get_firestore_db()
         if db:
             status_info["firestore_client_connected"] = True
@@ -60,7 +60,7 @@ def debug_firestore_status():
             status_info["orders_count"] = len(orders)
             status_info["reservations_count"] = len(reservations)
         else:
-            status_info["error"] = "Firestore Client returned None. Check FIREBASE_CREDENTIALS_JSON in Vercel Environment Variables."
+            status_info["error"] = firestore_init_error or "Firestore Client returned None. Check FIREBASE_CREDENTIALS_JSON in Vercel Environment Variables."
     except Exception as e:
         status_info["error"] = str(e)
 
