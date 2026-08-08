@@ -103,10 +103,12 @@
                 </div>
 
                 <div class="header-actions" style="display: flex; align-items: center; gap: 12px;">
-                    <span style="font-size: 0.85rem; opacity: 0.9; display: flex; align-items: center; gap: 4px;">
-                        <span class="material-symbols-outlined"
-                            style="font-size: 16px; color: #4ade80;">verified_user</span>
-                        <span>Session: <strong id="admin-user-display">Master Admin</strong></span>
+                    <span style="font-size: 0.85rem; opacity: 0.95; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-outlined" style="font-size: 18px; color: #4ade80;">verified_user</span>
+                        <span>User: <strong id="admin-user-display">SuperAdmin</strong></span>
+                        <span style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fbbf24; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; text-transform: uppercase;">
+                            Role: <span id="admin-role-display">Super Admin</span>
+                        </span>
                     </span>
                     <button id="admin-res-btn" class="btn btn-outline"
                         style="padding: 6px 12px; font-size: 0.8rem; border-color: rgba(255,255,255,0.4); color: #ffffff;"
@@ -137,7 +139,7 @@
 
                 <!-- Metrics Bar -->
                 <div class="admin-metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-                    <div class="metric-card">
+                    <div id="metric-card-orders" class="metric-card clickable-card" title="Click to view all orders">
                         <div class="metric-icon"
                             style="background-color: rgba(187, 0, 36, 0.1); color: var(--color-secondary);">
                             <span class="material-symbols-outlined">receipt_long</span>
@@ -148,7 +150,7 @@
                         </div>
                     </div>
 
-                    <div class="metric-card">
+                    <div id="metric-card-revenue" class="metric-card clickable-card" title="Click to view completed orders revenue">
                         <div class="metric-icon" style="background-color: rgba(22, 163, 74, 0.1); color: #16a34a;">
                             <span class="material-symbols-outlined">payments</span>
                         </div>
@@ -158,7 +160,7 @@
                         </div>
                     </div>
 
-                    <div class="metric-card">
+                    <div id="metric-card-active" class="metric-card clickable-card" title="Click to filter active kitchen orders">
                         <div class="metric-icon" style="background-color: rgba(234, 88, 12, 0.1); color: #ea580c;">
                             <span class="material-symbols-outlined">cooking</span>
                         </div>
@@ -168,7 +170,7 @@
                         </div>
                     </div>
 
-                    <div class="metric-card">
+                    <div id="metric-card-completed" class="metric-card clickable-card" title="Click to filter completed orders">
                         <div class="metric-icon" style="background-color: rgba(37, 99, 235, 0.1); color: #2563eb;">
                             <span class="material-symbols-outlined">verified</span>
                         </div>
@@ -178,7 +180,7 @@
                         </div>
                     </div>
 
-                    <div class="metric-card">
+                    <div id="metric-card-reservations" class="metric-card clickable-card" title="Click to open table bookings & events">
                         <div class="metric-icon" style="background-color: rgba(147, 51, 234, 0.1); color: #9333ea;">
                             <span class="material-symbols-outlined">event_seat</span>
                         </div>
@@ -190,12 +192,19 @@
                 </div>
 
                 <!-- Dashboard Section Tabs -->
-                <div class="admin-tab-bar" style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid var(--color-border-subtle); padding-bottom: 8px;">
+                <div class="admin-tab-bar"
+                    style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid var(--color-border-subtle); padding-bottom: 8px; flex-wrap: wrap;">
                     <button id="admin-tab-orders" class="admin-tab-btn active">
                         <span class="material-symbols-outlined">receipt_long</span> Food Orders Management
                     </button>
                     <button id="admin-tab-reservations" class="admin-tab-btn">
                         <span class="material-symbols-outlined">event_seat</span> Table Bookings & Private Events
+                    </button>
+                    <button id="admin-tab-employees" class="admin-tab-btn">
+                        <span class="material-symbols-outlined">badge</span> Staff & Employees
+                    </button>
+                    <button id="admin-tab-users" class="admin-tab-btn">
+                        <span class="material-symbols-outlined">manage_accounts</span> Admin Accounts & RBAC
                     </button>
                     <button id="admin-tab-audit" class="admin-tab-btn">
                         <span class="material-symbols-outlined">shield_lock</span> Security Audit Trail
@@ -212,6 +221,13 @@
                     </div>
 
                     <div class="filter-controls">
+                        <select id="admin-outlet-filter" class="form-input" style="width: auto; cursor: pointer;">
+                            <option value="ALL">All Outlets</option>
+                            <option value="OUTLET-01">Main Branch (OUTLET-01)</option>
+                            <option value="OUTLET-02">Dhanmondi Branch (OUTLET-02)</option>
+                            <option value="OUTLET-03">Gulshan Branch (OUTLET-03)</option>
+                        </select>
+
                         <select id="admin-status-filter" class="form-input" style="width: auto; cursor: pointer;">
                             <option value="ALL">All Statuses</option>
                             <option value="Confirmed">Confirmed</option>
@@ -231,6 +247,10 @@
                         <button id="admin-refresh-btn" class="btn btn-outline" style="padding: 10px 16px;"
                             title="Refresh Database">
                             <span class="material-symbols-outlined" style="font-size: 18px;">refresh</span>
+                        </button>
+                        <button id="admin-reset-filters-btn" class="btn btn-outline" style="padding: 10px 14px;"
+                            title="Reset Search & Filters">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">restart_alt</span> Reset
                         </button>
                     </div>
                 </div>
@@ -258,12 +278,16 @@
 
                 <!-- Tab Panel 2: Table Bookings & Private Events Section -->
                 <div id="panel-reservations-view" class="admin-orders-box hidden">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3 class="font-bengali" style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
-                            <span class="material-symbols-outlined" style="color: var(--color-secondary);">event_seat</span>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 class="font-bengali"
+                            style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined"
+                                style="color: var(--color-secondary);">event_seat</span>
                             Table Bookings & Private Dining Event Inquiries
                         </h3>
-                        <button id="admin-refresh-res-btn" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
+                        <button id="admin-refresh-res-btn" class="btn btn-outline"
+                            style="padding: 6px 12px; font-size: 0.8rem;">
                             <span class="material-symbols-outlined" style="font-size: 16px;">refresh</span> Refresh
                         </button>
                     </div>
@@ -274,17 +298,81 @@
 
                 <!-- Tab Panel 3: Security Audit Log Section -->
                 <div id="panel-audit-view" class="admin-orders-box hidden">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3 class="font-bengali" style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
-                            <span class="material-symbols-outlined" style="color: var(--color-secondary);">shield_lock</span>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 class="font-bengali"
+                            style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined"
+                                style="color: var(--color-secondary);">shield_lock</span>
                             Security System Audit Trail
                         </h3>
-                        <button id="admin-refresh-audit-btn" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
+                        <button id="admin-refresh-audit-btn" class="btn btn-outline"
+                            style="padding: 6px 12px; font-size: 0.8rem;">
                             <span class="material-symbols-outlined" style="font-size: 16px;">refresh</span> Refresh Logs
                         </button>
                     </div>
-                    <div id="inline-audit-content" style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; background: #0f172a; color: #38bdf8; padding: 20px; border-radius: 10px; line-height: 1.8;">
+                    <div id="inline-audit-content"
+                        style="max-height: 500px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; background: #0f172a; color: #38bdf8; padding: 20px; border-radius: 10px; line-height: 1.8;">
                         Loading security audit log entries...
+                    </div>
+                </div>
+
+                <!-- Tab Panel 4: Staff & Employees Section -->
+                <div id="panel-employees-view" class="admin-orders-box hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                        <h3 class="font-bengali" style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" style="color: var(--color-secondary);">badge</span>
+                            Staff Directory & Employee Management
+                        </h3>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="text" id="admin-employee-search" placeholder="Search staff..." class="form-input" style="padding: 6px 12px; font-size: 0.85rem; width: 170px;">
+                            <select id="admin-employee-outlet-filter" class="form-input" style="padding: 6px 10px; font-size: 0.82rem; height: 34px;">
+                                <option value="ALL">📍 All Outlets</option>
+                                <option value="OUTLET-01">📍 OUTLET-01 (Main)</option>
+                                <option value="OUTLET-02">📍 OUTLET-02 (Dhanmondi)</option>
+                                <option value="OUTLET-03">📍 OUTLET-03 (Gulshan)</option>
+                            </select>
+                            <select id="admin-employee-sort" class="form-input" style="padding: 6px 10px; font-size: 0.82rem; height: 34px;">
+                                <option value="default">Sort: Newest First</option>
+                                <option value="outlet">Sort by Outlet ID</option>
+                                <option value="name">Sort by Name</option>
+                                <option value="position">Sort by Position</option>
+                                <option value="status">Sort by Status</option>
+                            </select>
+                            <button id="open-add-employee-modal" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.8rem;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">person_add</span> Add New Staff
+                            </button>
+                            <button id="admin-refresh-employees-btn" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">refresh</span> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div id="inline-employees-content">
+                        Loading employee directory...
+                    </div>
+                </div>
+
+                <!-- Tab Panel 5: Admin Accounts & RBAC Section -->
+                <div id="panel-users-view" class="admin-orders-box hidden" style="padding: 28px; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04); border: 1.5px solid #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #f1f5f9; flex-wrap: wrap; gap: 16px;">
+                        <div>
+                            <h3 class="font-bengali" style="font-size: 1.5rem; font-weight: 800; color: #0f172a; margin: 0 0 6px 0; display: flex; align-items: center; gap: 10px;">
+                                <span class="material-symbols-outlined" style="color: var(--color-primary, #bb0024); font-size: 28px;">manage_accounts</span>
+                                Administrative Accounts & Role Access Control (RBAC)
+                            </h3>
+                            <p style="margin: 0; font-size: 0.88rem; color: #64748b;">Manage administrative permissions, security levels, and user credentials.</p>
+                        </div>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <button id="open-add-admin-modal" class="btn btn-primary" style="padding: 9px 18px; font-size: 0.85rem; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(187,0,36,0.2);">
+                                <span class="material-symbols-outlined" style="font-size: 18px;">admin_panel_settings</span> Create Admin Account
+                            </button>
+                            <button id="admin-refresh-users-btn" class="btn btn-outline" style="padding: 9px 16px; font-size: 0.85rem; font-weight: 700; border-radius: 8px; border: 1.5px solid #cbd5e1; color: #475569; display: inline-flex; align-items: center; gap: 6px; background: #ffffff;">
+                                <span class="material-symbols-outlined" style="font-size: 18px;">refresh</span> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div id="inline-users-content">
+                        Loading admin accounts...
                     </div>
                 </div>
 
@@ -378,6 +466,86 @@
                     <input type="password" id="chpw-new" required minlength="8" class="form-input">
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Update Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Employee Modal -->
+    <div id="add-employee-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 480px; width: 90%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 class="checkout-card-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined" style="color: var(--color-secondary);">person_add</span>
+                    <span>Add Staff Member</span>
+                </h3>
+                <button id="close-add-employee-modal" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.8rem;">✕ Close</button>
+            </div>
+            <form id="add-employee-form">
+                <div id="add-employee-msg" class="coupon-msg hidden" style="margin-bottom: 12px; text-align: center;"></div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" id="emp-name" required placeholder="e.g. Rahat Ahmed" class="form-input">
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Position / Title</label>
+                    <input type="text" id="emp-position" required placeholder="e.g. Head Chef / Waiter" class="form-input">
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Department</label>
+                    <select id="emp-department" class="form-input">
+                        <option value="Kitchen">Kitchen</option>
+                        <option value="Front of House">Front of House</option>
+                        <option value="Delivery & Logistics">Delivery & Logistics</option>
+                        <option value="Management">Management</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Assigned Outlet</label>
+                    <select id="emp-outlet-id" class="form-input">
+                        <option value="OUTLET-01">Main Branch (OUTLET-01)</option>
+                        <option value="OUTLET-02">Dhanmondi Branch (OUTLET-02)</option>
+                        <option value="OUTLET-03">Gulshan Branch (OUTLET-03)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Phone Number</label>
+                    <input type="text" id="emp-phone" required placeholder="e.g. +880 1700 000000" class="form-input">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Add Staff Member</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Admin Account Modal -->
+    <div id="add-admin-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 480px; width: 90%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 class="checkout-card-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined" style="color: var(--color-secondary);">admin_panel_settings</span>
+                    <span>Create Admin Account</span>
+                </h3>
+                <button id="close-add-admin-modal" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.8rem;">✕ Close</button>
+            </div>
+            <form id="add-admin-form">
+                <div id="add-admin-msg" class="coupon-msg hidden" style="margin-bottom: 12px; text-align: center;"></div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Username</label>
+                    <input type="text" id="admin-new-username" required placeholder="e.g. manager1" class="form-input" autocomplete="off">
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Password (min 8 chars)</label>
+                    <input type="password" id="admin-new-password" required minlength="8" placeholder="Enter fresh dedicated password" class="form-input" autocomplete="new-password">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Role Authority</label>
+                    <select id="admin-new-role" class="form-input">
+                        <option value="Super Manager">Super Manager (All Outlets Control)</option>
+                        <option value="Manager">Manager (Designated Outlet Only)</option>
+                        <option value="Staff">Staff (Order Management Only)</option>
+                        <option value="Super Admin">Super Admin (Full Platform Authority)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Admin Account</button>
             </form>
         </div>
     </div>

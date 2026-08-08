@@ -9,13 +9,37 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.cache/
 
-# SQLite Databases & environment files
+# Testing Scripts & Verification Utilities (Not needed in production hosting)
+test_*.py
+tests/
+test_*.js
+
+# Implementation Planning & Scratch Artifacts
+implementation_plan.md
+walkthrough.md
+scratch/
+
+# SQLite Databases & Credentials (ENV Secrets)
 *.db
 *.sqlite3
 .env
+.env.*
+serviceAccountKey.json
+*.json.key
 
-# IDE & OS metadata
+# Heavy Local Assets & Media Design Source Files
+BSR 01 cmyk.png
+*.psd
+*.ai
+*.raw
+
+# Logs & Temporary Data
+*.log
+*.tmp
+
+# IDE & OS Metadata
 .vscode/
 .idea/
 .DS_Store

@@ -31,6 +31,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // --- Double Confirmation Pop-up Helper for Database Deletions ---
+    function confirmDoubleDelete(itemName) {
+        const step1 = confirm(`⚠️ STEP 1 of 2: Are you SURE you want to delete ${itemName} from the database?`);
+        if (!step1) return false;
+        const step2 = confirm(`🚨 FINAL WARNING (STEP 2 of 2): Permanent database deletion of ${itemName}. Are you 100% sure? This action CANNOT be undone!`);
+        return step2;
+    }
+
     // --- Force scroll to Top / Hero section on reload (except Admin Portal) ---
     if (!document.body.classList.contains('admin-page-body')) {
         if ('scrollRestoration' in history) {
@@ -124,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
 
     function toggleMobileMenu(show) {
+        if (!mobileMenu) return;
         if (show) {
             mobileMenu.classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -149,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const target = document.querySelector(href);
                 toggleMobileMenu(false);
                 if (target) {
-                    // Wait for menu close animation + overflow restore before scrolling
                     setTimeout(() => {
                         requestAnimationFrame(() => {
                             target.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -172,19 +180,286 @@ document.addEventListener('DOMContentLoaded', () => {
     const reservationForm = document.getElementById('reservation-form');
 
     function toggleReservationModal(show) {
+        if (!reservationModal) return;
         if (show) {
             reservationModal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            if (lenis) lenis.stop();
         } else {
             reservationModal.classList.remove('active');
             document.body.style.overflow = '';
+            if (lenis) lenis.start();
         }
     }
 
-    [openReserveBtn, heroReserveBtn, mobileReserveBtn, eventInquireBtn].forEach(btn => {
+    // --- Mobile Bottom Navigation Interactivity ---
+    const mnavHome = document.getElementById('mnav-home');
+    const mnavMenu = document.getElementById('mnav-menu');
+    const mnavReserve = document.getElementById('mnav-reserve');
+    const mnavCart = document.getElementById('mnav-cart');
+
+    let userSelectedMobileNav = null;
+
+    function setActiveMobileNavItem(activeEl) {
+        userSelectedMobileNav = activeEl;
+        [mnavHome, mnavMenu, mnavReserve, mnavCart].forEach(item => {
+            if (item) item.classList.remove('active');
+        });
+        if (activeEl) activeEl.classList.add('active');
+    }
+
+    // ==========================================================================
+    // --- Lenis + GSAP ScrollTrigger Premium Smooth Scroll & Visual Reactivity ---
+    // ==========================================================================
+    let lenis = null;
+
+    if (typeof Lenis !== 'undefined') {
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
+
+        // Apple-like Weighted Physics Setup:
+        // lerp: 0.08 & wheelMultiplier: 1.2 for controlled inertia without floaty "slipping on ice" feel
+        lenis = new Lenis({
+            duration: 1.2,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // easeOutExpo decay curve
+            lerp: 0.08,
+            wheelMultiplier: 1.2,
+            touchMultiplier: 1.0,
+            smoothWheel: true,
+            smoothTouch: false, // Explicitly disabled on touch devices to maintain native accessibility
+            syncTouch: false
+        });
+
+        // GSAP ScrollTrigger Synchronization via rAF Ticker
+        if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+            gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+            // Synchronize GSAP ScrollTrigger on every Lenis scroll tick
+            lenis.on('scroll', ScrollTrigger.update);
+
+            // Drive Lenis scroll engine using GSAP's 60fps ticker
+            gsap.ticker.add((time) => {
+                lenis.raf(time * 1000);
+            });
+
+            // Prevent lag smoothing delays for 1:1 frame responsiveness
+            gsap.ticker.lagSmoothing(0);
+
+            // ----------------------------------------------------------------------
+            // Visual Reactivity Animations (Hardware-Accelerated: transform & opacity)
+            // ----------------------------------------------------------------------
+            if (!isTouchDevice) {
+                // 1. Subtle Text Reveal: Text block fades in and slides up (y: 30px -> 0px) as it enters viewport
+                gsap.utils.toArray('.gsap-text-reveal, .story-title, .menu-title, .contact-title, .feature-title, .section-label').forEach(textEl => {
+                    gsap.fromTo(textEl,
+                        { opacity: 0, y: 30 },
+                        {
+                            opacity: 1,
+                            y: 0,
+                            duration: 0.9,
+                            ease: "power2.out",
+                            scrollTrigger: {
+                                trigger: textEl,
+                                start: "top 88%",
+                                toggleActions: "play none none reverse"
+                            }
+                        }
+                    );
+                });
+
+                // 2. Subtle Parallax: Image moves slightly slower than scroll speed for premium depth
+                gsap.utils.toArray('.gsap-parallax-img, .story-image-frame img, .hero-image-card img').forEach(imgEl => {
+                    const parentWrap = imgEl.closest('.gsap-parallax-wrap, .story-image-frame, .hero-image-card') || imgEl.parentElement;
+                    gsap.fromTo(imgEl,
+                        { yPercent: -12 },
+                        {
+                            yPercent: 12,
+                            ease: "none",
+                            scrollTrigger: {
+                                trigger: parentWrap,
+                                start: "top bottom",
+                                end: "bottom top",
+                                scrub: true
+                            }
+                        }
+                    );
+                });
+            }
+        } else {
+            function raf(time) {
+                lenis.raf(time);
+                requestAnimationFrame(raf);
+            }
+            requestAnimationFrame(raf);
+        }
+
+        // Connect anchor links through Lenis physics engine
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const targetId = this.getAttribute('href');
+                if (targetId && targetId !== '#' && targetId.length > 1) {
+                    const targetEl = document.querySelector(targetId);
+                    if (targetEl) {
+                        e.preventDefault();
+                        lenis.scrollTo(targetEl, { offset: -70, duration: 1.2 });
+                    }
+                }
+            });
+        });
+    }
+
+    function handleMnavHome(e) {
+        if (e) e.preventDefault();
+        setActiveMobileNavItem(mnavHome);
+        if (lenis) {
+            lenis.scrollTo(0, { duration: 1.0 });
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function handleMnavMenu(e) {
+        if (e) e.preventDefault();
+        setActiveMobileNavItem(mnavMenu);
+        const menuSection = document.getElementById('menu');
+        if (menuSection) {
+            if (lenis) {
+                lenis.scrollTo(menuSection, { offset: -70, duration: 1.1 });
+            } else {
+                menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } else {
+            window.location.hash = 'menu';
+        }
+    }
+
+    function handleMnavReserve(e) {
+        if (e) e.preventDefault();
+        setActiveMobileNavItem(mnavReserve);
+        initReservationDateTimeValidation();
+        toggleReservationModal(true);
+    }
+
+    function handleMnavCart(e) {
+        if (e) e.preventDefault();
+        setActiveMobileNavItem(mnavCart);
+        toggleCartDrawer(true);
+    }
+
+    if (mnavHome) {
+        mnavHome.addEventListener('click', handleMnavHome);
+        mnavHome.addEventListener('touchend', (e) => { e.preventDefault(); handleMnavHome(e); }, { passive: false });
+    }
+    if (mnavMenu) {
+        mnavMenu.addEventListener('click', handleMnavMenu);
+        mnavMenu.addEventListener('touchend', (e) => { e.preventDefault(); handleMnavMenu(e); }, { passive: false });
+    }
+    if (mnavReserve) {
+        mnavReserve.addEventListener('click', handleMnavReserve);
+        mnavReserve.addEventListener('touchend', (e) => { e.preventDefault(); handleMnavReserve(e); }, { passive: false });
+    }
+    if (mnavCart) {
+        mnavCart.addEventListener('click', handleMnavCart);
+        mnavCart.addEventListener('touchend', (e) => { e.preventDefault(); handleMnavCart(e); }, { passive: false });
+    }
+
+    // Scroll spy for mobile bottom nav active state
+    window.addEventListener('scroll', throttle(() => {
+        if (window.innerWidth <= 768 && (!userSelectedMobileNav || userSelectedMobileNav === mnavHome || userSelectedMobileNav === mnavMenu)) {
+            const menuSection = document.getElementById('menu');
+            if (menuSection) {
+                const rect = menuSection.getBoundingClientRect();
+                if (rect.top <= 250 && rect.bottom >= 150) {
+                    setActiveMobileNavItem(mnavMenu);
+                    return;
+                }
+            }
+            if (window.scrollY < 300) {
+                setActiveMobileNavItem(mnavHome);
+            }
+        }
+    }, 200), { passive: true });
+
+
+
+    // --- Real Date & Time Validation for Table Reservations ---
+    function initReservationDateTimeValidation() {
+        const resDateInput = document.getElementById('res-date');
+        const resTimeSelect = document.getElementById('res-time');
+        if (!resDateInput || !resTimeSelect) return;
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+
+        resDateInput.min = todayStr;
+        if (!resDateInput.value || resDateInput.value < todayStr) {
+            resDateInput.value = todayStr;
+        }
+
+        function validateAndFilterTimeSlots() {
+            const selectedDate = resDateInput.value;
+            if (selectedDate < todayStr) {
+                showToast('⚠️ Past dates cannot be selected for reservations.');
+                resDateInput.value = todayStr;
+            }
+
+            const isToday = (resDateInput.value === todayStr);
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTimeInMinutes = currentHour * 60 + currentMinute;
+
+            const slotMap = [
+                { value: "12:30 PM (Lunch)", timeMins: 750 },
+                { value: "02:00 PM (Lunch)", timeMins: 840 },
+                { value: "07:30 PM (Dinner)", timeMins: 1170 },
+                { value: "09:00 PM (Dinner)", timeMins: 1260 }
+            ];
+
+            let validSlotsCount = 0;
+            Array.from(resTimeSelect.options).forEach(opt => {
+                const slot = slotMap.find(s => s.value === opt.value);
+                if (isToday && slot && slot.timeMins <= currentTimeInMinutes + 30) {
+                    opt.disabled = true;
+                } else {
+                    opt.disabled = false;
+                    validSlotsCount++;
+                }
+            });
+
+            if (isToday && validSlotsCount === 0) {
+                const tomorrow = new Date(now);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tYear = tomorrow.getFullYear();
+                const tMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                const tDay = String(tomorrow.getDate()).padStart(2, '0');
+                resDateInput.value = `${tYear}-${tMonth}-${tDay}`;
+                
+                Array.from(resTimeSelect.options).forEach(opt => {
+                    opt.disabled = false;
+                });
+                showToast("⏰ Today's reservation slots are closed. Reservation date set to tomorrow.");
+            }
+
+            if (resTimeSelect.selectedOptions[0] && resTimeSelect.selectedOptions[0].disabled) {
+                const firstAvailable = Array.from(resTimeSelect.options).find(o => !o.disabled);
+                if (firstAvailable) resTimeSelect.value = firstAvailable.value;
+            }
+        }
+
+        resDateInput.addEventListener('change', validateAndFilterTimeSlots);
+        validateAndFilterTimeSlots();
+    }
+
+    // Initialize reservation date/time limits
+    initReservationDateTimeValidation();
+
+    [openReserveBtn, heroReserveBtn, mobileReserveBtn, eventInquireBtn, mnavReserve].forEach(btn => {
         if (btn) {
             btn.addEventListener('click', () => {
                 toggleMobileMenu(false);
+                initReservationDateTimeValidation();
                 toggleReservationModal(true);
             });
         }
@@ -196,6 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target === reservationModal) toggleReservationModal(false);
         });
     }
+
 
     if (reservationForm) {
         reservationForm.addEventListener('submit', async (e) => {
@@ -211,6 +487,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const category = typeEl ? typeEl.value : 'Table Booking';
 
+            const outletEl = document.getElementById('res-outlet-id');
+            const outletId = outletEl ? outletEl.value : 'OUTLET-01';
+
             if (category === 'Private Event') {
                 const eventPayload = {
                     organizer_name: nameEl ? nameEl.value.trim() : 'Guest',
@@ -220,7 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     guest_count: guestsEl ? parseInt(guestsEl.value) || 10 : 10,
                     event_date: dateEl && dateEl.value ? dateEl.value : new Date().toISOString().split('T')[0],
                     event_time: timeEl && timeEl.value ? timeEl.value : '19:00',
-                    special_notes: reqEl && reqEl.value ? reqEl.value.trim() : null
+                    special_notes: reqEl && reqEl.value ? reqEl.value.trim() : null,
+                    outlet_id: outletId
                 };
 
                 try {
@@ -231,16 +511,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     if (res.ok) {
                         toggleReservationModal(false);
-                        showToast('🎉 Private Event Inquiry recorded in Database! We will contact you.');
+                        showToast('🎉 Private Event inquiry submitted successfully!');
                         reservationForm.reset();
+                        renderAdminDashboard();
+                        loadInlineReservations();
                     } else {
                         const err = await res.json();
-                        showToast(err.detail || 'Failed to submit private event inquiry.');
+                        let errorMsg = 'Failed to submit private event inquiry.';
+                        if (err.detail) {
+                            errorMsg = Array.isArray(err.detail) ? err.detail.map(d => d.msg).join(', ') : err.detail;
+                        }
+                        showToast(errorMsg);
                     }
                 } catch (err) {
-                    toggleReservationModal(false);
-                    showToast('Private Event Inquiry submitted successfully!');
-                    reservationForm.reset();
+                    showToast('Network error while submitting private event inquiry.');
                 }
             } else {
                 const payload = {
@@ -251,7 +535,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     reservation_date: dateEl && dateEl.value ? dateEl.value : new Date().toISOString().split('T')[0],
                     reservation_time: timeEl && timeEl.value ? timeEl.value : '19:00',
                     special_request: reqEl && reqEl.value ? reqEl.value.trim() : null,
-                    event_type: 'Table Booking'
+                    event_type: 'Table Booking',
+                    outlet_id: outletId
                 };
 
                 try {
@@ -262,16 +547,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     if (res.ok) {
                         toggleReservationModal(false);
-                        showToast('🍽️ Table Reservation request recorded in Database!');
+                        showToast('🍽️ Your table reservation has been confirmed!');
                         reservationForm.reset();
+                        renderAdminDashboard();
+                        loadInlineReservations();
                     } else {
                         const err = await res.json();
-                        showToast(err.detail || 'Failed to submit table reservation.');
+                        let errorMsg = 'Failed to submit table reservation.';
+                        if (err.detail) {
+                            errorMsg = Array.isArray(err.detail) ? err.detail.map(d => d.msg).join(', ') : err.detail;
+                        }
+                        showToast(errorMsg);
                     }
                 } catch (err) {
-                    toggleReservationModal(false);
-                    showToast('Table Reservation submitted successfully!');
-                    reservationForm.reset();
+                    showToast('Network error while submitting table reservation.');
                 }
             }
         });
@@ -331,20 +620,36 @@ document.addEventListener('DOMContentLoaded', () => {
         let isDown = false;
         let startX;
         let scrollLeft;
+        let velocity = 0;
+        let lastX = 0;
+        let momentumID;
 
         dishesSliderWrap.addEventListener('mousedown', (e) => {
             isDown = true;
             dishesSliderWrap.style.cursor = 'grabbing';
             startX = e.pageX - dishesSliderWrap.offsetLeft;
             scrollLeft = dishesSliderWrap.scrollLeft;
+            lastX = e.pageX;
+            velocity = 0;
+            cancelAnimationFrame(momentumID);
         });
 
+        function applyMomentum() {
+            if (Math.abs(velocity) > 0.5) {
+                dishesSliderWrap.scrollLeft -= velocity * 1.4;
+                velocity *= 0.94;
+                momentumID = requestAnimationFrame(applyMomentum);
+            }
+        }
+
         dishesSliderWrap.addEventListener('mouseleave', () => {
+            if (isDown) applyMomentum();
             isDown = false;
             dishesSliderWrap.style.cursor = '';
         });
 
         dishesSliderWrap.addEventListener('mouseup', () => {
+            if (isDown) applyMomentum();
             isDown = false;
             dishesSliderWrap.style.cursor = '';
         });
@@ -353,7 +658,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isDown) return;
             e.preventDefault();
             const x = e.pageX - dishesSliderWrap.offsetLeft;
-            const walk = (x - startX) * 2;
+            const walk = (x - startX) * 1.5;
+            velocity = e.pageX - lastX;
+            lastX = e.pageX;
             dishesSliderWrap.scrollLeft = scrollLeft - walk;
         });
     }
@@ -387,6 +694,15 @@ document.addEventListener('DOMContentLoaded', () => {
             orders.unshift(orderRecord); // Newest order first
             localStorage.setItem('bsr_orders', JSON.stringify(orders));
             return orders;
+        },
+        deleteOrder: function (orderId) {
+            let orders = this.getOrders();
+            orders = orders.filter(o => String(o.id) !== String(orderId));
+            localStorage.setItem('bsr_orders', JSON.stringify(orders));
+            return orders;
+        },
+        clearOrders: function () {
+            localStorage.removeItem('bsr_orders');
         },
 
         // Saved Customer Info
@@ -446,9 +762,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (show) {
             cartDrawer.classList.add('active');
             document.body.style.overflow = 'hidden';
+            if (lenis) lenis.stop();
         } else {
             cartDrawer.classList.remove('active');
             document.body.style.overflow = '';
+            if (lenis) lenis.start();
         }
     }
 
@@ -501,6 +819,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 cartBadge.classList.remove('hidden');
             } else {
                 cartBadge.classList.add('hidden');
+            }
+        }
+
+        const mobileCartBadge = document.getElementById('mobile-cart-badge');
+        if (mobileCartBadge) {
+            if (totalItems > 0) {
+                mobileCartBadge.textContent = totalItems;
+                mobileCartBadge.classList.remove('hidden');
+            } else {
+                mobileCartBadge.classList.add('hidden');
             }
         }
 
@@ -735,6 +1063,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const totals = calculateCheckoutTotals();
 
+            const outletSelectEl = document.getElementById('chk-outlet-id') || document.getElementById('p-outlet-id');
+            const selectedOutletId = outletSelectEl ? outletSelectEl.value : 'OUTLET-01';
+
             const orderPayload = {
                 customer_name: name,
                 customer_phone: phone,
@@ -747,7 +1078,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     price: item.price,
                     qty: item.quantity
                 })),
-                coupon_code: appliedCoupon ? appliedCoupon.code : null
+                coupon_code: appliedCoupon ? appliedCoupon.code : null,
+                outlet_id: selectedOutletId
             };
 
             let createdOrder = null;
@@ -821,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.style.overflow = 'hidden';
             }
 
-            showToast(`Order ${createdOrder.id} confirmed and saved to database!`);
+            showToast(`🎉 Your order ${createdOrder.id} has been confirmed!`);
         });
     }
 
@@ -901,7 +1233,7 @@ document.addEventListener('DOMContentLoaded', () => {
             historyList.innerHTML = `
                 <div style="text-align: center; padding: 40px 0; color: var(--color-text-muted);">
                     <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.5;">history</span>
-                    <p style="margin-top: 8px;">No past orders found in your database.</p>
+                    <p style="margin-top: 8px;">No past orders found in your history.</p>
                 </div>
             `;
         } else {
@@ -1235,6 +1567,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Custom cursor: only attach events on desktop – no listeners consumed on mobile
     if (cursor && !IS_MOBILE) {
+        // Ensure cursor elements are top-level direct children of document.body (above modal overlays)
+        if (cursor.parentNode !== document.body) {
+            document.body.appendChild(cursor);
+        }
+        if (follower && follower.parentNode !== document.body) {
+            document.body.appendChild(follower);
+        }
+
         document.addEventListener('mousemove', (e) => {
             cursor.style.left = `${e.clientX}px`;
             cursor.style.top = `${e.clientY}px`;
@@ -1244,7 +1584,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 cursor.classList.remove('hero-hide');
             }
-        });
+        }, { capture: true, passive: true });
 
         window.addEventListener('scroll', throttle(() => {
             cursor.classList.add('scrolling');
@@ -1255,18 +1595,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100), { passive: true });
 
         // Magnifying glass expansion when hovering focused elements
-        const focusableSelector = 'a, button, .dish-card, input, select, .brand-logo, .hero-image-card, .menu-filter, .feature-card';
+        const focusableSelector = 'a, button, .dish-card, input, select, .brand-logo, .hero-image-card, .menu-filter, .feature-card, .admin-btn, .admin-nav-item, .admin-card, .role-badge, .admin-modal-card, .theme-switcher-btn, .admin-logout-btn, .modal-overlay, .admin-modal-overlay, .modal-card';
         document.addEventListener('mouseover', (e) => {
-            if (e.target.closest(focusableSelector)) {
+            if (e.target && e.target.closest && e.target.closest(focusableSelector)) {
                 cursor.classList.add('magnify');
             }
-        });
+        }, { capture: true, passive: true });
 
         document.addEventListener('mouseout', (e) => {
-            if (e.target.closest(focusableSelector)) {
+            if (e.target && e.target.closest && e.target.closest(focusableSelector)) {
                 cursor.classList.remove('magnify');
             }
-        });
+        }, { capture: true, passive: true });
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1635,35 +1975,244 @@ document.addEventListener('DOMContentLoaded', () => {
     const chpwForm = document.getElementById('chpw-form');
     const chpwMsg = document.getElementById('chpw-msg');
 
-    let currentCsrfToken = '';
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    let currentCsrfToken = sessionStorage.getItem('bsr_csrf_token') || '';
+
+    function setCsrfToken(token) {
+        if (!token) return;
+        currentCsrfToken = token;
+        try {
+            sessionStorage.setItem('bsr_csrf_token', token);
+        } catch (e) {}
+    }
+
+    function getCsrfToken() {
+        const match = document.cookie.match(new RegExp('(?:^|; )bsr_csrf_token=([^;]+)'));
+        if (match && match[1]) return decodeURIComponent(match[1]);
+        return currentCsrfToken || sessionStorage.getItem('bsr_csrf_token') || '';
+    }
+
+    let currentDbVersion = 0;
+    let syncIntervalTimer = null;
+
+    async function checkDbSyncSchedule() {
+        if (!adminDashboardScreen || adminDashboardScreen.classList.contains('hidden')) {
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/sync-status', {
+                method: 'GET',
+                headers: getAuthHeaders(),
+                cache: 'no-store'
+            });
+
+            if (res.ok) {
+                const headerVersionStr = res.headers.get('X-DB-Revision');
+                const data = await res.json();
+                const serverVersion = headerVersionStr ? parseInt(headerVersionStr, 10) : (data.db_version || 0);
+
+                if (currentDbVersion === 0) {
+                    currentDbVersion = serverVersion;
+                } else if (serverVersion > currentDbVersion) {
+                    currentDbVersion = serverVersion;
+                    await renderAdminDashboard();
+
+                    const activeTab = document.querySelector('.admin-nav-btn.active');
+                    if (activeTab) {
+                        const tabName = activeTab.dataset.tab;
+                        if (tabName === 'reservations') await loadInlineReservations();
+                        else if (tabName === 'employees') await loadInlineEmployees();
+                        else if (tabName === 'audit') await loadInlineAuditLogs();
+                    }
+                    showToast('⚡ Live Sync: Database updated, dashboard refreshed.');
+                }
+            }
+        } catch (err) {
+            // Silently ignore offline network errors
+        }
+    }
+
+    function startAdminSyncSchedule() {
+        if (!syncIntervalTimer) {
+            checkDbSyncSchedule();
+            syncIntervalTimer = setInterval(checkDbSyncSchedule, 5000);
+        }
+    }
+
+    function stopAdminSyncSchedule() {
+        if (syncIntervalTimer) {
+            clearInterval(syncIntervalTimer);
+            syncIntervalTimer = null;
+        }
+    }
+
+    // ==========================================================================
+    // --- Admin Inactivity Tracker (1 Hour Auto-Logout) & Session Boundary ---
+    // ==========================================================================
+    const INACTIVITY_LIMIT_MS = 60 * 60 * 1000; // 1 hour in milliseconds (3,600,000 ms)
+    let inactivityTimer = null;
+    let lastActivityTimestamp = Date.now();
+
+    function recordAdminActivity() {
+        lastActivityTimestamp = Date.now();
+        sessionStorage.setItem('bsr_admin_last_activity', String(lastActivityTimestamp));
+    }
+
+    const throttledRecordActivity = throttle(recordAdminActivity, 5000);
+
+    function startAdminInactivityTracker() {
+        recordAdminActivity();
+        
+        window.addEventListener('mousemove', throttledRecordActivity, { passive: true });
+        window.addEventListener('keydown', throttledRecordActivity, { passive: true });
+        window.addEventListener('click', throttledRecordActivity, { passive: true });
+        window.addEventListener('scroll', throttledRecordActivity, { passive: true });
+        window.addEventListener('touchstart', throttledRecordActivity, { passive: true });
+
+        if (inactivityTimer) clearInterval(inactivityTimer);
+
+        // Periodically check elapsed inactivity time every 15 seconds
+        inactivityTimer = setInterval(() => {
+            if (!adminDashboardScreen || adminDashboardScreen.classList.contains('hidden')) {
+                return;
+            }
+
+            const storedLastActivity = parseInt(sessionStorage.getItem('bsr_admin_last_activity') || String(lastActivityTimestamp), 10);
+            const elapsed = Date.now() - storedLastActivity;
+
+            if (elapsed >= INACTIVITY_LIMIT_MS) {
+                performAdminAutoLogout('Session expired after 1 hour of inactivity.');
+            }
+        }, 15000);
+    }
+
+    function stopAdminInactivityTracker() {
+        window.removeEventListener('mousemove', throttledRecordActivity);
+        window.removeEventListener('keydown', throttledRecordActivity);
+        window.removeEventListener('click', throttledRecordActivity);
+        window.removeEventListener('scroll', throttledRecordActivity);
+        window.removeEventListener('touchstart', throttledRecordActivity);
+
+        if (inactivityTimer) {
+            clearInterval(inactivityTimer);
+            inactivityTimer = null;
+        }
+    }
+
+    async function performAdminAutoLogout(reasonMessage = 'Admin session logged out.') {
+        stopAdminInactivityTracker();
+        stopAdminSyncSchedule();
+
+        try {
+            await fetch('/api/admin/logout', { method: 'POST' });
+        } catch (e) {
+            // Ignore network disconnects during logout
+        }
+
+        sessionStorage.removeItem('bsr_admin_logged_in');
+        sessionStorage.removeItem('bsr_admin_last_activity');
+        sessionStorage.removeItem('bsr_csrf_token');
+        localStorage.removeItem('bsr_admin_logged_in');
+
+        if (adminDashboardScreen) adminDashboardScreen.classList.add('hidden');
+        if (adminLoginScreen) adminLoginScreen.classList.remove('hidden');
+
+        if (adminLoginError) {
+            adminLoginError.textContent = `🔒 ${reasonMessage}`;
+            adminLoginError.classList.remove('hidden');
+        }
+
+        showToast(`🔒 ${reasonMessage}`);
+    }
+
+    function getAuthHeaders(extraHeaders = {}) {
+        const headers = { ...extraHeaders };
+        const csrf = getCsrfToken();
+        if (csrf) {
+            headers['X-CSRF-Token'] = csrf;
+        }
+        return headers;
+    }
 
     async function checkAdminSession() {
         if (!adminLoginScreen || !adminDashboardScreen) return;
 
-        const isLocalLoggedIn = localStorage.getItem('bsr_admin_logged_in') === 'true';
+        const isLocalLoggedIn = sessionStorage.getItem('bsr_admin_logged_in') === 'true' || localStorage.getItem('bsr_admin_logged_in') === 'true';
 
         try {
             const res = await fetch('/api/admin/me');
             if (res.ok) {
                 const data = await res.json();
-                if (adminUserDisplay) adminUserDisplay.textContent = data.username || 'Master Admin';
+                if (data.csrf_token) setCsrfToken(data.csrf_token);
+                window.currentAdminRole = data.role || 'Super Admin';
+                window.currentAdminUsername = data.username || 'admin';
+                if (adminUserDisplay) adminUserDisplay.textContent = data.username || 'SuperAdmin';
+                const adminRoleDisplay = document.getElementById('admin-role-display');
+                if (adminRoleDisplay) adminRoleDisplay.textContent = data.role || 'Super Admin';
+
+                // Restrict RBAC tab visibility if not Super Admin or Super Manager
+                const tabUsers = document.getElementById('admin-tab-users');
+                if (tabUsers) {
+                    if (data.role === 'Super Admin' || data.role === 'Super Manager') {
+                        tabUsers.classList.remove('hidden');
+                    } else {
+                        tabUsers.classList.add('hidden');
+                    }
+                }
+
+                // Restrict Add Staff button and Audit Logs for Staff role
+                const openAddEmpModal = document.getElementById('open-add-employee-modal');
+                if (openAddEmpModal) {
+                    if (data.role === 'Staff') {
+                        openAddEmpModal.classList.add('hidden');
+                    } else {
+                        openAddEmpModal.classList.remove('hidden');
+                    }
+                }
+
+                const adminAuditBtn = document.getElementById('admin-audit-btn');
+                if (adminAuditBtn) {
+                    if (data.role === 'Staff') {
+                        adminAuditBtn.classList.add('hidden');
+                    } else {
+                        adminAuditBtn.classList.remove('hidden');
+                    }
+                }
+
+                sessionStorage.setItem('bsr_admin_logged_in', 'true');
                 adminLoginScreen.classList.add('hidden');
                 adminDashboardScreen.classList.remove('hidden');
                 renderAdminDashboard();
+                loadInlineReservations();
+                startAdminSyncSchedule();
+                startAdminInactivityTracker();
             } else {
-                // API returned 401 or auth error - invalid session
-                localStorage.removeItem('bsr_admin_logged_in');
-                adminLoginScreen.classList.remove('hidden');
-                adminDashboardScreen.classList.add('hidden');
+                // Session expired or unauthenticated
+                performAdminAutoLogout('Admin session expired. Please re-login.');
             }
         } catch (err) {
-            // Network error fallback (e.g. static mode testing without server)
+            // Network fallback mode
             if (isLocalLoggedIn) {
                 if (adminUserDisplay) adminUserDisplay.textContent = 'Master Admin';
                 adminLoginScreen.classList.add('hidden');
                 adminDashboardScreen.classList.remove('hidden');
                 renderAdminDashboard();
+                loadInlineReservations();
+                startAdminSyncSchedule();
+                startAdminInactivityTracker();
             } else {
+                stopAdminInactivityTracker();
+                stopAdminSyncSchedule();
                 adminLoginScreen.classList.remove('hidden');
                 adminDashboardScreen.classList.add('hidden');
             }
@@ -1693,8 +2242,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (res.ok) {
                     const data = await res.json();
-                    currentCsrfToken = data.csrf_token || '';
-                    localStorage.setItem('bsr_admin_logged_in', 'true');
+                    if (data.csrf_token) setCsrfToken(data.csrf_token);
+                    sessionStorage.setItem('bsr_admin_logged_in', 'true');
                     showToast('🔒 Authenticated via Secure FastAPI Session!');
                     checkAdminSession();
                 } else {
@@ -1707,7 +2256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 // Fallback for standalone static testing
                 if (usernameInput === 'admin' && passwordInput === 'bsr@admin2026') {
-                    localStorage.setItem('bsr_admin_logged_in', 'true');
+                    sessionStorage.setItem('bsr_admin_logged_in', 'true');
                     checkAdminSession();
                     showToast('Welcome to Admin Portal!');
                 } else {
@@ -1722,14 +2271,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (adminLogoutBtn) {
         adminLogoutBtn.addEventListener('click', async () => {
-            try {
-                await fetch('/api/admin/logout', { method: 'POST' });
-            } catch (err) {
-                console.warn("Logout error:", err);
-            }
-            localStorage.removeItem('bsr_admin_logged_in');
-            checkAdminSession();
-            showToast('Logged out from Admin Portal');
+            await performAdminAutoLogout('Logged out from Admin Portal.');
         });
     }
 
@@ -1743,13 +2285,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const searchQuery = adminSearchInput ? adminSearchInput.value.trim() : '';
             const statusFilterVal = adminStatusFilter ? adminStatusFilter.value : 'ALL';
             const typeFilterVal = adminTypeFilter ? adminTypeFilter.value : 'ALL';
+            const outletFilterVal = adminOutletFilter ? adminOutletFilter.value : 'ALL';
 
             const params = new URLSearchParams();
             if (searchQuery) params.append('search', searchQuery);
             if (statusFilterVal !== 'ALL') params.append('status_filter', statusFilterVal);
             if (typeFilterVal !== 'ALL') params.append('type_filter', typeFilterVal);
+            if (outletFilterVal !== 'ALL') params.append('outlet_filter', outletFilterVal);
+            params.append('_t', Date.now());
 
-            const res = await fetch(`/api/admin/orders?${params.toString()}`);
+            const res = await fetch(`/api/admin/orders?${params.toString()}`, { headers: getAuthHeaders(), cache: 'no-store' });
             if (res.ok) {
                 const apiOrders = await res.json();
                 orders = apiOrders.map(o => ({
@@ -1767,7 +2312,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     tax: 0,
                     deliveryFee: 0,
                     finalTotal: o.total,
-                    status: o.status
+                    status: o.status,
+                    outletId: o.outlet_id || 'OUTLET-01'
                 }));
             } else if (res.status === 401) {
                 localStorage.removeItem('bsr_admin_logged_in');
@@ -1800,8 +2346,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fetch bookings & events count asynchronously for 5th KPI card
         try {
             const [r1, r2] = await Promise.all([
-                fetch('/api/admin/reservations'),
-                fetch('/api/admin/private-events')
+                fetch('/api/admin/reservations', { headers: getAuthHeaders(), cache: 'no-store' }),
+                fetch('/api/admin/private-events', { headers: getAuthHeaders(), cache: 'no-store' })
             ]);
             const list1 = r1.ok ? await r1.json() : [];
             const list2 = r2.ok ? await r2.json() : [];
@@ -1842,6 +2388,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="admin-order-header">
                     <div>
                         <strong style="font-size: 1.1rem; color: var(--color-primary); cursor: pointer;" class="admin-inspect-trigger" data-id="${order.id}">${order.id}</strong>
+                        <span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary); margin-left: 8px;">📍 ${order.outletId}</span>
                         <span style="font-size: 0.8rem; color: var(--color-text-muted); margin-left: 10px;">Placed: ${order.date}</span>
                     </div>
 
@@ -1927,7 +2474,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const res = await fetch(`/api/admin/orders/${orderId}/status`, {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                         body: JSON.stringify({ status: newStatus })
                     });
                     if (res.ok) {
@@ -1943,23 +2490,25 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Add Delete Event Listeners
+        // Add Delete Event Listeners with 2-Step Confirmation
         document.querySelectorAll('.admin-delete-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const orderId = btn.dataset.id;
-                if (confirm(`Are you sure you want to delete order ${orderId} from the database?`)) {
+                if (confirmDoubleDelete(`Order ID ${orderId}`)) {
                     try {
-                        const res = await fetch(`/api/admin/orders/${orderId}`, { method: 'DELETE' });
+                        const res = await fetch(`/api/admin/orders/${orderId}`, { method: 'DELETE', headers: getAuthHeaders() });
                         if (res.ok) {
+                            bsrDB.deleteOrder(orderId);
                             showToast(`Order ${orderId} deleted from database.`);
-                            renderAdminDashboard();
+                            await renderAdminDashboard();
                         } else {
                             const err = await res.json();
                             showToast(err.detail || 'Delete failed');
                         }
                     } catch (e) {
+                        bsrDB.deleteOrder(orderId);
                         showToast(`Order ${orderId} deleted.`);
-                        renderAdminDashboard();
+                        await renderAdminDashboard();
                     }
                 }
             });
@@ -1971,25 +2520,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (adminSearchInput) adminSearchInput.addEventListener('input', renderAdminDashboard);
+    const adminOutletFilter = document.getElementById('admin-outlet-filter');
+
+    if (adminSearchInput) adminSearchInput.addEventListener('input', () => {
+        renderAdminDashboard();
+        loadInlineReservations();
+    });
+    if (adminOutletFilter) adminOutletFilter.addEventListener('change', () => {
+        renderAdminDashboard();
+        loadInlineReservations();
+        loadInlineEmployees();
+    });
     if (adminStatusFilter) adminStatusFilter.addEventListener('change', renderAdminDashboard);
     if (adminTypeFilter) adminTypeFilter.addEventListener('change', renderAdminDashboard);
     if (adminRefreshBtn) adminRefreshBtn.addEventListener('click', () => {
         renderAdminDashboard();
+        loadInlineReservations();
         showToast('Database refreshed!');
     });
 
     if (adminClearDbBtn) {
         adminClearDbBtn.addEventListener('click', async () => {
-            if (confirm('Warning: This will delete ALL orders from the database! Are you sure?')) {
+            if (confirmDoubleDelete('ALL food orders in the entire database')) {
                 try {
-                    const res = await fetch('/api/admin/orders', { method: 'DELETE' });
+                    const res = await fetch('/api/admin/orders', { method: 'DELETE', headers: getAuthHeaders() });
                     if (res.ok) {
-                        renderAdminDashboard();
+                        bsrDB.clearOrders();
                         showToast('All order database records deleted.');
+                        await renderAdminDashboard();
+                    } else {
+                        const err = await res.json();
+                        showToast(err.detail || 'Clear DB failed');
                     }
                 } catch (e) {
+                    bsrDB.clearOrders();
                     showToast('Clear DB request sent.');
+                    await renderAdminDashboard();
                 }
             }
         });
@@ -2107,7 +2673,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const res = await fetch(`/api/admin/orders/${orderId}/status`, {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                         body: JSON.stringify({ status: newStatus })
                     });
                     if (res.ok) {
@@ -2134,15 +2700,20 @@ document.addEventListener('DOMContentLoaded', () => {
             deleteBtn.addEventListener('click', async () => {
                 if (confirm(`Delete order ${order.id} from database?`)) {
                     try {
-                        const res = await fetch(`/api/admin/orders/${order.id}`, { method: 'DELETE' });
+                        const res = await fetch(`/api/admin/orders/${order.id}`, { method: 'DELETE', headers: getAuthHeaders() });
                         if (res.ok) {
+                            bsrDB.deleteOrder(order.id);
                             modal.classList.remove('active');
                             showToast(`Order ${order.id} deleted.`);
-                            renderAdminDashboard();
+                            await renderAdminDashboard();
+                        } else {
+                            const err = await res.json();
+                            showToast(err.detail || 'Delete failed');
                         }
                     } catch (e) {
+                        bsrDB.deleteOrder(order.id);
                         modal.classList.remove('active');
-                        renderAdminDashboard();
+                        await renderAdminDashboard();
                     }
                 }
             });
@@ -2326,7 +2897,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch('/api/admin/change-password', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ current_password: curPw, new_password: newPw })
                 });
 
@@ -2348,26 +2919,45 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Dashboard Section Tab Switcher ---
+    // --- Dashboard Section Tab Switcher & Navigation ---
     const tabOrders = document.getElementById('admin-tab-orders');
     const tabReservations = document.getElementById('admin-tab-reservations');
+    const tabEmployees = document.getElementById('admin-tab-employees');
+    const tabUsers = document.getElementById('admin-tab-users');
     const tabAudit = document.getElementById('admin-tab-audit');
 
     const panelOrders = document.getElementById('panel-orders-view');
     const panelReservations = document.getElementById('panel-reservations-view');
+    const panelEmployees = document.getElementById('panel-employees-view');
+    const panelUsers = document.getElementById('panel-users-view');
     const panelAudit = document.getElementById('panel-audit-view');
     const ordersToolbar = document.getElementById('admin-orders-toolbar');
 
     const refreshResBtn = document.getElementById('admin-refresh-res-btn');
     const refreshAuditBtn = document.getElementById('admin-refresh-audit-btn');
+    const adminResetFiltersBtn = document.getElementById('admin-reset-filters-btn');
+
+    if (adminResetFiltersBtn) {
+        adminResetFiltersBtn.addEventListener('click', () => {
+            if (adminSearchInput) adminSearchInput.value = '';
+            if (adminStatusFilter) adminStatusFilter.value = 'ALL';
+            if (adminTypeFilter) adminTypeFilter.value = 'ALL';
+            renderAdminDashboard();
+            showToast('Search & Filters Reset!');
+        });
+    }
 
     function switchAdminTab(activeTab) {
         if (tabOrders) tabOrders.classList.remove('active');
         if (tabReservations) tabReservations.classList.remove('active');
+        if (tabEmployees) tabEmployees.classList.remove('active');
+        if (tabUsers) tabUsers.classList.remove('active');
         if (tabAudit) tabAudit.classList.remove('active');
 
         if (panelOrders) panelOrders.classList.add('hidden');
         if (panelReservations) panelReservations.classList.add('hidden');
+        if (panelEmployees) panelEmployees.classList.add('hidden');
+        if (panelUsers) panelUsers.classList.add('hidden');
         if (panelAudit) panelAudit.classList.add('hidden');
         if (ordersToolbar) ordersToolbar.classList.add('hidden');
 
@@ -2380,6 +2970,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tabReservations) tabReservations.classList.add('active');
             if (panelReservations) panelReservations.classList.remove('hidden');
             loadInlineReservations();
+        } else if (activeTab === 'employees') {
+            if (tabEmployees) tabEmployees.classList.add('active');
+            if (panelEmployees) panelEmployees.classList.remove('hidden');
+            loadInlineEmployees();
+        } else if (activeTab === 'users') {
+            if (tabUsers) tabUsers.classList.add('active');
+            if (panelUsers) panelUsers.classList.remove('hidden');
+            loadInlineAdminUsers();
         } else if (activeTab === 'audit') {
             if (tabAudit) tabAudit.classList.add('active');
             if (panelAudit) panelAudit.classList.remove('hidden');
@@ -2389,30 +2987,574 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (tabOrders) tabOrders.addEventListener('click', () => switchAdminTab('orders'));
     if (tabReservations) tabReservations.addEventListener('click', () => switchAdminTab('reservations'));
+    if (tabEmployees) tabEmployees.addEventListener('click', () => switchAdminTab('employees'));
+    if (tabUsers) tabUsers.addEventListener('click', () => switchAdminTab('users'));
     if (tabAudit) tabAudit.addEventListener('click', () => switchAdminTab('audit'));
+
+    // Link Header Action Buttons directly to Main Tabs
+    if (adminResBtn) {
+        adminResBtn.addEventListener('click', () => switchAdminTab('reservations'));
+    }
+    if (adminAuditBtn) {
+        adminAuditBtn.addEventListener('click', () => switchAdminTab('audit'));
+    }
+
+    // KPI Metric Card Click Handlers
+    const cardOrders = document.getElementById('metric-card-orders');
+    const cardRevenue = document.getElementById('metric-card-revenue');
+    const cardActive = document.getElementById('metric-card-active');
+    const cardCompleted = document.getElementById('metric-card-completed');
+    const cardReservations = document.getElementById('metric-card-reservations');
+
+    if (cardOrders) cardOrders.addEventListener('click', () => {
+        if (adminStatusFilter) adminStatusFilter.value = 'ALL';
+        if (adminTypeFilter) adminTypeFilter.value = 'ALL';
+        switchAdminTab('orders');
+    });
+    if (cardRevenue) cardRevenue.addEventListener('click', () => {
+        if (adminStatusFilter) adminStatusFilter.value = 'Completed';
+        switchAdminTab('orders');
+    });
+    if (cardActive) cardActive.addEventListener('click', () => {
+        if (adminStatusFilter) adminStatusFilter.value = 'Kitchen Prep';
+        switchAdminTab('orders');
+    });
+    if (cardCompleted) cardCompleted.addEventListener('click', () => {
+        if (adminStatusFilter) adminStatusFilter.value = 'Completed';
+        switchAdminTab('orders');
+    });
+    if (cardReservations) cardReservations.addEventListener('click', () => {
+        switchAdminTab('reservations');
+    });
 
     if (refreshResBtn) refreshResBtn.addEventListener('click', loadInlineReservations);
     if (refreshAuditBtn) refreshAuditBtn.addEventListener('click', loadInlineAuditLogs);
+
+    // --- Employee Management Handlers ---
+    const refreshEmployeesBtn = document.getElementById('admin-refresh-employees-btn');
+    const openAddEmployeeModal = document.getElementById('open-add-employee-modal');
+    const closeAddEmployeeModal = document.getElementById('close-add-employee-modal');
+    const addEmployeeModal = document.getElementById('add-employee-modal');
+    const addEmployeeForm = document.getElementById('add-employee-form');
+    const addEmployeeMsg = document.getElementById('add-employee-msg');
+    const employeeSearch = document.getElementById('admin-employee-search');
+
+    const empOutletFilter = document.getElementById('admin-employee-outlet-filter');
+    const empSortSelect = document.getElementById('admin-employee-sort');
+
+    if (refreshEmployeesBtn) refreshEmployeesBtn.addEventListener('click', loadInlineEmployees);
+    if (empOutletFilter) empOutletFilter.addEventListener('change', loadInlineEmployees);
+    if (empSortSelect) empSortSelect.addEventListener('change', loadInlineEmployees);
+    if (employeeSearch) employeeSearch.addEventListener('input', debounce(loadInlineEmployees, 300));
+
+    if (openAddEmployeeModal && addEmployeeModal) {
+        openAddEmployeeModal.addEventListener('click', () => {
+            addEmployeeModal.classList.add('active');
+            if (addEmployeeMsg) addEmployeeMsg.classList.add('hidden');
+        });
+    }
+    if (closeAddEmployeeModal && addEmployeeModal) {
+        closeAddEmployeeModal.addEventListener('click', () => addEmployeeModal.classList.remove('active'));
+    }
+
+    if (addEmployeeForm) {
+        addEmployeeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (window.currentAdminRole === 'Staff') {
+                showToast('⛔ Access Denied: Staff role is not authorized to add staff members.');
+                if (addEmployeeMsg) {
+                    addEmployeeMsg.textContent = 'Access Denied: Staff role is not authorized to add staff members.';
+                    addEmployeeMsg.className = 'coupon-msg error';
+                    addEmployeeMsg.classList.remove('hidden');
+                }
+                return;
+            }
+
+            const name = document.getElementById('emp-name').value.trim();
+            const position = document.getElementById('emp-position').value.trim();
+            const department = document.getElementById('emp-department').value;
+            const outletId = document.getElementById('emp-outlet-id') ? document.getElementById('emp-outlet-id').value : 'OUTLET-01';
+            const phone = document.getElementById('emp-phone').value.trim();
+
+            try {
+                const res = await fetch('/api/admin/employees', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ name, position, department, phone, outlet_id: outletId })
+                });
+
+                if (res.ok) {
+                    showToast(`Staff member '${name}' added!`);
+                    addEmployeeForm.reset();
+                    if (addEmployeeModal) addEmployeeModal.classList.remove('active');
+                    loadInlineEmployees();
+                } else {
+                    const err = await res.json();
+                    if (addEmployeeMsg) {
+                        addEmployeeMsg.textContent = err.detail || 'Failed to add employee.';
+                        addEmployeeMsg.className = 'coupon-msg error';
+                        addEmployeeMsg.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                showToast('Failed to add employee.');
+            }
+        });
+    }
+
+    async function loadInlineEmployees() {
+        const container = document.getElementById('inline-employees-content');
+        if (!container) return;
+        container.innerHTML = '<p style="padding: 24px; text-align: center; color: var(--color-text-muted);">Loading employee directory...</p>';
+
+        try {
+            const query = employeeSearch ? employeeSearch.value.trim() : '';
+            const outletFilterVal = empOutletFilter ? empOutletFilter.value : 'ALL';
+            const sortVal = empSortSelect ? empSortSelect.value : 'default';
+
+            const params = new URLSearchParams();
+            if (query) params.append('search', query);
+            if (outletFilterVal !== 'ALL') params.append('outlet_filter', outletFilterVal);
+            if (sortVal !== 'default') params.append('sort_by', sortVal);
+
+            params.append('_t', Date.now());
+
+            const res = await fetch(`/api/admin/employees?${params.toString()}`, { headers: getAuthHeaders(), cache: 'no-store' });
+
+            if (res.ok) {
+                const employees = await res.json();
+                if (employees.length === 0) {
+                    container.innerHTML = '<p style="color: var(--color-text-muted); padding: 16px;">No employee records found.</p>';
+                } else {
+                    const isSuperUser = window.currentAdminRole === 'Super Admin' || window.currentAdminRole === 'Super Manager';
+
+                    const rows = employees.map(e => `
+                        <tr>
+                            <td>#${e.id}</td>
+                            <td><strong style="color: var(--color-primary);">${e.name}</strong></td>
+                            <td><span style="font-weight: 600; color: var(--color-secondary);">${e.position}</span></td>
+                            <td>${e.department}</td>
+                            <td>
+                                ${isSuperUser ? `
+                                    <select class="status-select admin-emp-outlet-change" data-id="${e.id}" title="Super Manager/Admin: Change Outlet">
+                                        <option value="OUTLET-01" ${e.outlet_id === 'OUTLET-01' ? 'selected' : ''}>📍 OUTLET-01</option>
+                                        <option value="OUTLET-02" ${e.outlet_id === 'OUTLET-02' ? 'selected' : ''}>📍 OUTLET-02</option>
+                                        <option value="OUTLET-03" ${e.outlet_id === 'OUTLET-03' ? 'selected' : ''}>📍 OUTLET-03</option>
+                                    </select>
+                                ` : `
+                                    <span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${e.outlet_id || 'OUTLET-01'}</span>
+                                `}
+                            </td>
+                            <td>📞 ${e.phone}</td>
+                            <td>
+                                <select class="status-select admin-emp-status-change" data-id="${e.id}">
+                                    <option value="Active" ${e.status === 'Active' ? 'selected' : ''}>Active</option>
+                                    <option value="Inactive" ${e.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                                    <option value="On Leave" ${e.status === 'On Leave' ? 'selected' : ''}>On Leave</option>
+                                </select>
+                            </td>
+                            <td style="text-align: center;">
+                                <button class="btn btn-outline admin-emp-delete-btn" data-id="${e.id}" data-name="${e.name}" style="padding: 2px 8px; font-size: 0.75rem; color: #dc2626; border-color: #fca5a5;">
+                                    <span class="material-symbols-outlined" style="font-size: 14px;">delete</span> Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+
+                    container.innerHTML = `
+                        <table class="res-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Employee Name</th>
+                                    <th>Position / Title</th>
+                                    <th>Department</th>
+                                    <th>Assigned Outlet</th>
+                                    <th>Contact</th>
+                                    <th>Status</th>
+                                    <th style="text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    `;
+
+                    // Wire outlet change (Super Admin & Super Manager only)
+                    container.querySelectorAll('.admin-emp-outlet-change').forEach(select => {
+                        select.addEventListener('change', async () => {
+                            const empId = select.dataset.id;
+                            const newOutlet = select.value;
+                            try {
+                                const r = await fetch(`/api/admin/employees/${empId}/outlet`, {
+                                    method: 'PATCH',
+                                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                                    body: JSON.stringify({ outlet_id: newOutlet })
+                                });
+                                if (r.ok) {
+                                    showToast(`Employee #${empId} reassigned to ${newOutlet}`);
+                                } else {
+                                    const err = await r.json();
+                                    showToast(err.detail || 'Failed to update outlet assignment.');
+                                    loadInlineEmployees();
+                                }
+                            } catch (e) {
+                                showToast('Failed to update outlet assignment.');
+                            }
+                        });
+                    });
+
+                    // Wire status change
+                    container.querySelectorAll('.admin-emp-status-change').forEach(select => {
+                        select.addEventListener('change', async () => {
+                            const empId = select.dataset.id;
+                            const newStatus = select.value;
+                            try {
+                                const r = await fetch(`/api/admin/employees/${empId}/status`, {
+                                    method: 'PATCH',
+                                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                                    body: JSON.stringify({ status: newStatus })
+                                });
+                                if (r.ok) {
+                                    showToast(`Employee #${empId} status set to ${newStatus}`);
+                                } else {
+                                    showToast('Failed to update status.');
+                                }
+                            } catch (e) {
+                                showToast(`Employee #${empId} status set to ${newStatus}`);
+                            }
+                        });
+                    });
+
+                    // Wire delete button
+                    container.querySelectorAll('.admin-emp-delete-btn').forEach(btn => {
+                        btn.addEventListener('click', async () => {
+                            const empId = btn.dataset.id;
+                            const empName = btn.dataset.name;
+                            if (confirmDoubleDelete(`employee '${empName}'`)) {
+                                try {
+                                    const r = await fetch(`/api/admin/employees/${empId}`, { method: 'DELETE', headers: getAuthHeaders() });
+                                    if (r.ok) {
+                                        showToast(`Employee '${empName}' deleted.`);
+                                        loadInlineEmployees();
+                                    }
+                                } catch (e) {
+                                    showToast('Failed to delete employee.');
+                                }
+                            }
+                        });
+                    });
+                }
+            } else {
+                container.innerHTML = '<p style="color: #f87171; padding: 16px;">Access Denied (Manager, Super Manager, or Super Admin role required).</p>';
+            }
+        } catch (err) {
+            container.innerHTML = '<p style="color: var(--color-secondary); padding: 16px;">Failed to load employee directory.</p>';
+        }
+    }
+
+    // --- Admin Accounts & RBAC Handlers ---
+    const refreshUsersBtn = document.getElementById('admin-refresh-users-btn');
+    const openAddAdminModal = document.getElementById('open-add-admin-modal');
+    const closeAddAdminModal = document.getElementById('close-add-admin-modal');
+    const addAdminModal = document.getElementById('add-admin-modal');
+    const addAdminForm = document.getElementById('add-admin-form');
+    const addAdminMsg = document.getElementById('add-admin-msg');
+
+    if (refreshUsersBtn) refreshUsersBtn.addEventListener('click', loadInlineAdminUsers);
+
+    if (openAddAdminModal && addAdminModal) {
+        openAddAdminModal.addEventListener('click', () => {
+            addAdminModal.classList.add('active');
+            if (addAdminMsg) addAdminMsg.classList.add('hidden');
+        });
+    }
+    if (closeAddAdminModal && addAdminModal) {
+        closeAddAdminModal.addEventListener('click', () => addAdminModal.classList.remove('active'));
+    }
+
+    if (addAdminForm) {
+        addAdminForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('admin-new-username').value.trim();
+            const password = document.getElementById('admin-new-password').value.trim();
+            const role = document.getElementById('admin-new-role').value;
+
+            try {
+                const res = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ username, password, role })
+                });
+
+                if (res.ok) {
+                    showToast(`Admin account '${username}' created with role '${role}'!`);
+                    addAdminForm.reset();
+                    if (addAdminModal) addAdminModal.classList.remove('active');
+                    loadInlineAdminUsers();
+                } else {
+                    const err = await res.json();
+                    if (addAdminMsg) {
+                        addAdminMsg.textContent = err.detail || 'Failed to create admin user.';
+                        addAdminMsg.className = 'coupon-msg error';
+                        addAdminMsg.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                showToast('Failed to create admin user.');
+            }
+        });
+    }
+
+    async function loadInlineAdminUsers() {
+        const container = document.getElementById('inline-users-content');
+        if (!container) return;
+        container.innerHTML = '<p style="padding: 24px; text-align: center; color: var(--color-text-muted);">Loading admin accounts & security roles...</p>';
+
+        if (window.currentAdminRole && window.currentAdminRole !== 'Super Admin' && window.currentAdminRole !== 'Super Manager') {
+            container.innerHTML = '<p style="color: #dc2626; font-weight: 700; padding: 24px; text-align: center; background: #fee2e2; border-radius: 8px; font-size: 1rem;">⛔ RESTRICTED ACCESS: Only Super Admin or Super Manager authority can view or manage RBAC Admin Accounts.</p>';
+            return;
+        }
+
+        try {
+            const activeAdminUser = (adminUserDisplay ? adminUserDisplay.textContent : '').trim();
+            const res = await fetch('/api/admin/users?_t=' + Date.now(), { headers: getAuthHeaders(), cache: 'no-store' });
+            if (res.ok) {
+                const users = await res.json();
+                const cardsHtml = users.map(u => {
+                    const isSelf = activeAdminUser && (u.username.toLowerCase() === activeAdminUser.toLowerCase());
+                    return `
+                        <div class="rbac-user-card ${isSelf ? 'is-self-card' : ''}">
+                            <div class="rbac-user-info">
+                                <div class="rbac-avatar">
+                                    <span class="material-symbols-outlined">person</span>
+                                </div>
+                                <div>
+                                    <div class="rbac-username-row">
+                                        <span class="rbac-username">${u.username}</span>
+                                        ${isSelf ? '<span class="rbac-self-pill">YOU</span>' : ''}
+                                        <span class="rbac-status-dot ${u.is_active ? 'active' : 'disabled'}">${u.is_active ? 'Active' : 'Disabled'}</span>
+                                    </div>
+                                    <div class="rbac-user-meta">
+                                        <span>Account ID: <strong style="color: #475569;">#${u.id}</strong></span>
+                                        <span>• Created: <strong style="color: #475569;">${new Date(u.created_at).toLocaleDateString()}</strong></span>
+                                        <span>• Outlet: <strong style="color: var(--color-primary);">📍 ${u.outlet_id || 'OUTLET-01'}</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="rbac-controls-group">
+                                <div class="rbac-role-box">
+                                    <label class="rbac-role-label">Authority Level</label>
+                                    ${isSelf ? `
+                                        <div class="rbac-protected-role" title="Self-demotion protection: SuperAdmin cannot change their own role.">
+                                            <span class="material-symbols-outlined">shield</span>
+                                            <span>${u.role || 'Super Admin'} (Protected)</span>
+                                        </div>
+                                    ` : `
+                                        <select class="rbac-role-select-card admin-role-change" data-id="${u.id}" data-username="${u.username}" title="Change Authority Role for ${u.username}">
+                                            <option value="Super Admin" ${u.role === 'Super Admin' ? 'selected' : ''}>👑 Super Admin</option>
+                                            <option value="Super Manager" ${u.role === 'Super Manager' ? 'selected' : ''}>🛡️ Super Manager</option>
+                                            <option value="Manager" ${u.role === 'Manager' ? 'selected' : ''}>🏢 Manager</option>
+                                            <option value="Staff" ${u.role === 'Staff' ? 'selected' : ''}>👤 Staff</option>
+                                        </select>
+                                    `}
+                                </div>
+
+                                <div class="rbac-role-box">
+                                    <label class="rbac-role-label">Assigned Outlet</label>
+                                    <select class="rbac-role-select-card admin-user-outlet-change" data-id="${u.id}" data-username="${u.username}" title="Reassign Outlet for ${u.username}">
+                                        <option value="OUTLET-01" ${u.outlet_id === 'OUTLET-01' ? 'selected' : ''}>📍 OUTLET-01 (Main)</option>
+                                        <option value="OUTLET-02" ${u.outlet_id === 'OUTLET-02' ? 'selected' : ''}>📍 OUTLET-02 (Dhanmondi)</option>
+                                        <option value="OUTLET-03" ${u.outlet_id === 'OUTLET-03' ? 'selected' : ''}>📍 OUTLET-03 (Gulshan)</option>
+                                    </select>
+                                </div>
+
+                                <div class="rbac-buttons-group">
+                                    <button class="btn-rbac-action btn-rbac-action-pw admin-user-pw-edit-btn" data-id="${u.id}" data-username="${u.username}" title="Change/Reset Password for account '${u.username}'">
+                                        <span class="material-symbols-outlined">key</span>
+                                        <span>${isSelf ? 'Change Password' : 'Reset Password'}</span>
+                                    </button>
+                                    ${isSelf ? '<span class="rbac-self-note">Active Account</span>' : `
+                                        <button class="btn-rbac-action btn-rbac-action-del admin-user-delete-btn" data-id="${u.id}" data-username="${u.username}" title="Permanently remove account '${u.username}'">
+                                            <span class="material-symbols-outlined">delete</span>
+                                            <span>Remove</span>
+                                        </button>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = `
+                    <div class="rbac-cards-container">
+                        ${cardsHtml}
+                    </div>
+                `;
+
+                // Wire Role Change Listener with Confirmation Pop-up
+                container.querySelectorAll('.admin-role-change').forEach(select => {
+                    let currentVal = select.value;
+                    select.addEventListener('focus', () => { currentVal = select.value; });
+                    select.addEventListener('change', async () => {
+                        const userId = select.dataset.id;
+                        const targetUser = select.dataset.username;
+                        const newRole = select.value;
+
+                        const confirmChange = confirm(`⚠️ ROLE DEMOTION / ACCESS CHANGE CONFIRMATION:\n\nAre you sure you want to change authority role for user '${targetUser}' from '${currentVal}' to '${newRole}'?`);
+                        if (!confirmChange) {
+                            select.value = currentVal;
+                            return;
+                        }
+
+                        try {
+                            const r = await fetch(`/api/admin/users/${userId}/role`, {
+                                method: 'PATCH',
+                                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                                body: JSON.stringify({ role: newRole })
+                            });
+                            if (r.ok) {
+                                showToast(`Role for user '${targetUser}' set to ${newRole}`);
+                                loadInlineAdminUsers();
+                            } else {
+                                const err = await r.json();
+                                showToast(err.detail || 'Failed to update role');
+                                select.value = currentVal;
+                            }
+                        } catch (e) {
+                            showToast('Failed to update role');
+                            select.value = currentVal;
+                        }
+                    });
+                });
+
+                // Wire Admin Outlet Reassignment Listener (Super Admin & Super Manager only)
+                container.querySelectorAll('.admin-user-outlet-change').forEach(select => {
+                    select.addEventListener('change', async () => {
+                        const userId = select.dataset.id;
+                        const targetUser = select.dataset.username;
+                        const newOutlet = select.value;
+
+                        try {
+                            const r = await fetch(`/api/admin/users/${userId}/outlet`, {
+                                method: 'PATCH',
+                                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                                body: JSON.stringify({ outlet_id: newOutlet })
+                            });
+                            if (r.ok) {
+                                showToast(`Admin '${targetUser}' reassigned to ${newOutlet}`);
+                                loadInlineAdminUsers();
+                            } else {
+                                const err = await r.json();
+                                showToast(err.detail || 'Failed to reassign outlet');
+                            }
+                        } catch (e) {
+                            showToast('Failed to reassign outlet');
+                        }
+                    });
+                });
+
+                // Wire Admin Password Reset Listener (for non-Super Admin accounts)
+                container.querySelectorAll('.admin-user-pw-edit-btn').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const userId = btn.dataset.id;
+                        const uname = btn.dataset.username;
+                        const newPw = prompt(`🔑 RESET PASSWORD for admin account '${uname}':\n\nEnter new password (minimum 8 characters):`);
+                        if (!newPw) return;
+                        if (newPw.trim().length < 8) {
+                            showToast('Password must be at least 8 characters long.');
+                            return;
+                        }
+
+                        try {
+                            const res = await fetch(`/api/admin/users/${userId}/password`, {
+                                method: 'PATCH',
+                                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                                body: JSON.stringify({ new_password: newPw.trim() })
+                            });
+                            if (res.ok) {
+                                showToast(`🔑 Password updated successfully for account '${uname}'!`);
+                            } else {
+                                const err = await res.json();
+                                showToast(err.detail || 'Password update failed.');
+                            }
+                        } catch (e) {
+                            showToast('Failed to update password.');
+                        }
+                    });
+                });
+
+                // Wire Admin Account Delete Listener with 2-Step Confirmation
+                container.querySelectorAll('.admin-user-delete-btn').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const userId = btn.dataset.id;
+                        const uname = btn.dataset.username;
+                        if (confirmDoubleDelete(`admin user account '${uname}'`)) {
+                            try {
+                                const r = await fetch(`/api/admin/users/${userId}`, {
+                                    method: 'DELETE',
+                                    headers: getAuthHeaders()
+                                });
+                                if (r.ok) {
+                                    showToast(`Admin account '${uname}' deleted successfully.`);
+                                    loadInlineAdminUsers();
+                                } else {
+                                    const err = await r.json();
+                                    showToast(err.detail || 'Failed to delete admin user.');
+                                }
+                            } catch (e) {
+                                showToast('Failed to delete admin user.');
+                            }
+                        }
+                    });
+                });
+
+            } else {
+                container.innerHTML = '<p style="color: #dc2626; font-weight: 700; padding: 24px; text-align: center; background: #fee2e2; border-radius: 8px; font-size: 1rem;">⛔ RESTRICTED ACCESS: Only Super Admin authority can view or manage RBAC Admin Accounts.</p>';
+            }
+        } catch (err) {
+            container.innerHTML = '<p style="color: #dc2626; font-weight: 700; padding: 24px; text-align: center; background: #fee2e2; border-radius: 8px; font-size: 1rem;">⛔ RESTRICTED ACCESS: Only Super Admin authority can view or manage RBAC Admin Accounts.</p>';
+        }
+    }
 
     async function loadInlineReservations() {
         const container = document.getElementById('inline-reservations-content');
         if (!container) return;
         container.innerHTML = '<p style="padding: 24px; text-align: center; color: var(--color-text-muted);">Loading table reservations & private event inquiries...</p>';
         try {
+            const query = adminSearchInput ? adminSearchInput.value.trim() : '';
+            const outletFilterVal = adminOutletFilter ? adminOutletFilter.value : 'ALL';
+            const params = new URLSearchParams();
+            if (query) params.append('search', query);
+            if (outletFilterVal !== 'ALL') params.append('outlet_filter', outletFilterVal);
+
+            params.append('_t', Date.now());
+
             const [res1, res2] = await Promise.all([
-                fetch('/api/admin/reservations'),
-                fetch('/api/admin/private-events')
+                fetch(`/api/admin/reservations?${params.toString()}`, { headers: getAuthHeaders(), cache: 'no-store' }),
+                fetch(`/api/admin/private-events?${params.toString()}`, { headers: getAuthHeaders(), cache: 'no-store' })
             ]);
 
             const reservations = res1.ok ? await res1.json() : [];
             const events = res2.ok ? await res2.json() : [];
 
             let html = `
-                <div style="margin-bottom: 28px;">
-                    <h4 style="font-size: 1.1rem; color: var(--color-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                        <span class="material-symbols-outlined" style="color: var(--color-secondary);">restaurant</span>
-                        Table Booking Requests (${reservations.length})
-                    </h4>
+                <div style="margin-bottom: 32px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                        <h4 style="font-size: 1.1rem; color: var(--color-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" style="color: var(--color-secondary);">restaurant</span>
+                            Table Booking Requests (${reservations.length})
+                        </h4>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button id="admin-delete-selected-res-btn" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; color: #dc2626; border-color: #fca5a5;" title="Delete Selected Reservations">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">checklist</span> Delete Selected (<span id="selected-res-count">0</span>)
+                            </button>
+                            <button id="admin-wipe-res-btn" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; color: #dc2626; border-color: #fca5a5; background: #fff5f5;" title="Wipe All Table Reservations">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">delete_forever</span> Wipe All Bookings
+                            </button>
+                        </div>
+                    </div>
             `;
 
             if (reservations.length === 0) {
@@ -2420,13 +3562,27 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const resRows = reservations.map(r => `
                     <tr>
+                        <td style="text-align: center;"><input type="checkbox" class="res-select-checkbox" data-id="${r.id}" style="cursor: pointer;"></td>
                         <td>#${r.id}</td>
                         <td><strong style="color: var(--color-primary);">${r.guest_name}</strong></td>
+                        <td><span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${r.outlet_id || 'OUTLET-01'}</span></td>
                         <td>📞 ${r.phone}<br>${r.email ? '✉️ ' + r.email : ''}</td>
                         <td style="text-align: center;">👥 <strong>${r.guests_count} Guests</strong></td>
                         <td>📅 ${r.reservation_date}<br>⏰ ${r.reservation_time}</td>
                         <td>${r.special_request || '—'}</td>
-                        <td><span class="status-badge" style="background-color: #dbeafe; color: #1e40af;">${r.status}</span></td>
+                        <td>
+                            <select class="status-select admin-res-status-change" data-id="${r.id}">
+                                <option value="Pending" ${r.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Confirmed" ${r.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                                <option value="Completed" ${r.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                <option value="Cancelled" ${r.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </td>
+                        <td style="text-align: center;">
+                            <button class="btn btn-outline admin-res-delete-btn" data-id="${r.id}" style="padding: 2px 8px; font-size: 0.75rem; color: #dc2626; border-color: #fca5a5;" title="Delete Reservation">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">delete</span> Delete
+                            </button>
+                        </td>
                     </tr>
                 `).join('');
 
@@ -2434,13 +3590,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     <table class="res-table" style="margin-bottom: 24px;">
                         <thead>
                             <tr>
+                                <th style="width: 36px; text-align: center;"><input type="checkbox" id="select-all-res-checkbox" style="cursor: pointer;" title="Select All Bookings"></th>
                                 <th>ID</th>
                                 <th>Guest Name</th>
+                                <th>Outlet</th>
                                 <th>Contact Info</th>
                                 <th style="text-align: center;">Party Size</th>
                                 <th>Date & Time</th>
                                 <th>Special Notes</th>
-                                <th>Status</th>
+                                <th>Status Action</th>
+                                <th style="text-align: center;">Manage</th>
                             </tr>
                         </thead>
                         <tbody>${resRows}</tbody>
@@ -2449,10 +3608,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             html += `
-                <h4 style="font-size: 1.1rem; color: var(--color-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                    <span class="material-symbols-outlined" style="color: var(--color-secondary);">celebration</span>
-                    Private Dining & Event Inquiries (${events.length})
-                </h4>
+                <div style="margin-top: 32px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                        <h4 style="font-size: 1.1rem; color: var(--color-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-outlined" style="color: var(--color-secondary);">celebration</span>
+                            Private Dining & Event Inquiries (${events.length})
+                        </h4>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button id="admin-delete-selected-events-btn" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; color: #dc2626; border-color: #fca5a5;" title="Delete Selected Events">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">checklist</span> Delete Selected (<span id="selected-events-count">0</span>)
+                            </button>
+                            <button id="admin-wipe-events-btn" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; color: #dc2626; border-color: #fca5a5; background: #fff5f5;" title="Wipe All Event Inquiries">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">delete_forever</span> Wipe All Events
+                            </button>
+                        </div>
+                    </div>
             `;
 
             if (events.length === 0) {
@@ -2460,14 +3630,28 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const eventRows = events.map(e => `
                     <tr>
+                        <td style="text-align: center;"><input type="checkbox" class="event-select-checkbox" data-id="${e.id}" style="cursor: pointer;"></td>
                         <td>#${e.id}</td>
                         <td><strong style="color: var(--color-primary);">${e.organizer_name}</strong></td>
+                        <td><span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${e.outlet_id || 'OUTLET-01'}</span></td>
                         <td>📞 ${e.phone}<br>${e.email ? '✉️ ' + e.email : ''}</td>
                         <td><strong style="color: var(--color-secondary);">${e.event_type}</strong></td>
                         <td style="text-align: center;">👥 <strong>${e.guest_count} Guests</strong></td>
                         <td>📅 ${e.event_date}<br>⏰ ${e.event_time || 'TBD'}</td>
                         <td>${e.special_notes || '—'}</td>
-                        <td><span class="status-badge" style="background-color: #fef3c7; color: #b45309;">${e.status}</span></td>
+                        <td>
+                            <select class="status-select admin-event-status-change" data-id="${e.id}">
+                                <option value="Pending" ${e.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Confirmed" ${e.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                                <option value="Completed" ${e.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                <option value="Cancelled" ${e.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </td>
+                        <td style="text-align: center;">
+                            <button class="btn btn-outline admin-event-delete-btn" data-id="${e.id}" style="padding: 2px 8px; font-size: 0.75rem; color: #dc2626; border-color: #fca5a5;" title="Delete Event">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">delete</span> Delete
+                            </button>
+                        </td>
                     </tr>
                 `).join('');
 
@@ -2475,14 +3659,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     <table class="res-table">
                         <thead>
                             <tr>
+                                <th style="width: 36px; text-align: center;"><input type="checkbox" id="select-all-events-checkbox" style="cursor: pointer;" title="Select All Events"></th>
                                 <th>ID</th>
                                 <th>Organizer</th>
+                                <th>Outlet</th>
                                 <th>Contact</th>
                                 <th>Event Type</th>
                                 <th style="text-align: center;">Guests</th>
                                 <th>Date & Time</th>
                                 <th>Notes</th>
-                                <th>Status</th>
+                                <th>Status Action</th>
+                                <th style="text-align: center;">Manage</th>
                             </tr>
                         </thead>
                         <tbody>${eventRows}</tbody>
@@ -2490,34 +3677,277 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             }
 
-            html += `</div>`;
+            html += `</div></div>`;
             container.innerHTML = html;
+
+            // Wire Reservation Checkbox Selection & Batch/Wipe Listeners
+            const selectAllResCheckbox = container.querySelector('#select-all-res-checkbox');
+            const resCheckboxes = container.querySelectorAll('.res-select-checkbox');
+            const selectedResCount = container.querySelector('#selected-res-count');
+
+            function updateSelectedResCount() {
+                const checked = container.querySelectorAll('.res-select-checkbox:checked');
+                if (selectedResCount) selectedResCount.textContent = checked.length;
+            }
+
+            if (selectAllResCheckbox) {
+                selectAllResCheckbox.addEventListener('change', () => {
+                    resCheckboxes.forEach(cb => cb.checked = selectAllResCheckbox.checked);
+                    updateSelectedResCount();
+                });
+            }
+            resCheckboxes.forEach(cb => cb.addEventListener('change', updateSelectedResCount));
+
+            // Wire Wipe All Bookings with Double Confirmation
+            const wipeResBtn = container.querySelector('#admin-wipe-res-btn');
+            if (wipeResBtn) {
+                wipeResBtn.addEventListener('click', async () => {
+                    if (confirmDoubleDelete('ALL Table Reservations in the entire database')) {
+                        try {
+                            const r = await fetch('/api/admin/reservations', { method: 'DELETE', headers: getAuthHeaders() });
+                            if (r.ok) {
+                                showToast('All table reservations wiped successfully.');
+                                loadInlineReservations();
+                            } else {
+                                const err = await r.json();
+                                showToast(err.detail || 'Wipe reservations failed.');
+                            }
+                        } catch (e) {
+                            showToast('Wipe reservations failed.');
+                        }
+                    }
+                });
+            }
+
+            // Wire Delete Selected Bookings with Double Confirmation
+            const deleteSelectedResBtn = container.querySelector('#admin-delete-selected-res-btn');
+            if (deleteSelectedResBtn) {
+                deleteSelectedResBtn.addEventListener('click', async () => {
+                    const checked = container.querySelectorAll('.res-select-checkbox:checked');
+                    const selectedIds = Array.from(checked).map(cb => cb.dataset.id);
+                    if (selectedIds.length === 0) {
+                        showToast('Please select at least one table reservation to delete.');
+                        return;
+                    }
+
+                    if (confirmDoubleDelete(`${selectedIds.length} selected table reservation(s)`)) {
+                        try {
+                            const r = await fetch('/api/admin/reservations/batch-delete', {
+                                method: 'POST',
+                                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                                body: JSON.stringify({ ids: selectedIds })
+                            });
+                            if (r.ok) {
+                                const data = await r.json();
+                                showToast(data.message || `Deleted ${selectedIds.length} reservation(s).`);
+                                loadInlineReservations();
+                            } else {
+                                const err = await r.json();
+                                showToast(err.detail || 'Batch delete failed.');
+                            }
+                        } catch (e) {
+                            showToast('Batch delete failed.');
+                        }
+                    }
+                });
+            }
+
+            // Wire Event Checkbox Selection & Batch/Wipe Listeners
+            const selectAllEventsCheckbox = container.querySelector('#select-all-events-checkbox');
+            const eventCheckboxes = container.querySelectorAll('.event-select-checkbox');
+            const selectedEventsCount = container.querySelector('#selected-events-count');
+
+            function updateSelectedEventsCount() {
+                const checked = container.querySelectorAll('.event-select-checkbox:checked');
+                if (selectedEventsCount) selectedEventsCount.textContent = checked.length;
+            }
+
+            if (selectAllEventsCheckbox) {
+                selectAllEventsCheckbox.addEventListener('change', () => {
+                    eventCheckboxes.forEach(cb => cb.checked = selectAllEventsCheckbox.checked);
+                    updateSelectedEventsCount();
+                });
+            }
+            eventCheckboxes.forEach(cb => cb.addEventListener('change', updateSelectedEventsCount));
+
+            // Wire Wipe All Private Events with Double Confirmation
+            const wipeEventsBtn = container.querySelector('#admin-wipe-events-btn');
+            if (wipeEventsBtn) {
+                wipeEventsBtn.addEventListener('click', async () => {
+                    if (confirmDoubleDelete('ALL Private Event Inquiries in the entire database')) {
+                        try {
+                            const r = await fetch('/api/admin/private-events', { method: 'DELETE', headers: getAuthHeaders() });
+                            if (r.ok) {
+                                showToast('All private event inquiries wiped successfully.');
+                                loadInlineReservations();
+                            } else {
+                                const err = await r.json();
+                                showToast(err.detail || 'Wipe events failed.');
+                            }
+                        } catch (e) {
+                            showToast('Wipe events failed.');
+                        }
+                    }
+                });
+            }
+
+            // Wire Delete Selected Private Events with Double Confirmation
+            const deleteSelectedEventsBtn = container.querySelector('#admin-delete-selected-events-btn');
+            if (deleteSelectedEventsBtn) {
+                deleteSelectedEventsBtn.addEventListener('click', async () => {
+                    const checked = container.querySelectorAll('.event-select-checkbox:checked');
+                    const selectedIds = Array.from(checked).map(cb => cb.dataset.id);
+                    if (selectedIds.length === 0) {
+                        showToast('Please select at least one private event inquiry to delete.');
+                        return;
+                    }
+
+                    if (confirmDoubleDelete(`${selectedIds.length} selected private event inquiry/inquiries`)) {
+                        try {
+                            const r = await fetch('/api/admin/private-events/batch-delete', {
+                                method: 'POST',
+                                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                                body: JSON.stringify({ ids: selectedIds })
+                            });
+                            if (r.ok) {
+                                const data = await r.json();
+                                showToast(data.message || `Deleted ${selectedIds.length} event(s).`);
+                                loadInlineReservations();
+                            } else {
+                                const err = await r.json();
+                                showToast(err.detail || 'Batch delete failed.');
+                            }
+                        } catch (e) {
+                            showToast('Batch delete failed.');
+                        }
+                    }
+                });
+            }
+
+            // Wire Reservation Status Change Listener
+            container.querySelectorAll('.admin-res-status-change').forEach(select => {
+                select.addEventListener('change', async () => {
+                    const resId = select.dataset.id;
+                    const newStatus = select.value;
+                    try {
+                        const res = await fetch(`/api/admin/reservations/${resId}/status`, {
+                            method: 'PATCH',
+                            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                            body: JSON.stringify({ status: newStatus })
+                        });
+                        if (res.ok) {
+                            showToast(`Reservation #${resId} status updated to ${newStatus}`);
+                            loadInlineReservations();
+                        } else {
+                            showToast('Failed to update reservation status');
+                        }
+                    } catch (err) {
+                        showToast(`Reservation #${resId} set to ${newStatus}`);
+                    }
+                });
+            });
+
+            // Wire Reservation Delete Listener with 2-Step Confirmation
+            container.querySelectorAll('.admin-res-delete-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const resId = btn.dataset.id;
+                    if (confirmDoubleDelete(`table reservation #${resId}`)) {
+                        try {
+                            const res = await fetch(`/api/admin/reservations/${resId}`, { method: 'DELETE', headers: getAuthHeaders() });
+                            if (res.ok) {
+                                showToast(`Reservation #${resId} deleted.`);
+                                loadInlineReservations();
+                            }
+                        } catch (err) {
+                            showToast(`Reservation #${resId} deleted.`);
+                            loadInlineReservations();
+                        }
+                    }
+                });
+            });
+
+            // Wire Event Status Change Listener
+            container.querySelectorAll('.admin-event-status-change').forEach(select => {
+                select.addEventListener('change', async () => {
+                    const eventId = select.dataset.id;
+                    const newStatus = select.value;
+                    try {
+                        const res = await fetch(`/api/admin/private-events/${eventId}/status`, {
+                            method: 'PATCH',
+                            headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                            body: JSON.stringify({ status: newStatus })
+                        });
+                        if (res.ok) {
+                            showToast(`Private Event #${eventId} status updated to ${newStatus}`);
+                            loadInlineReservations();
+                        } else {
+                            showToast('Failed to update event status');
+                        }
+                    } catch (err) {
+                        showToast(`Event #${eventId} set to ${newStatus}`);
+                    }
+                });
+            });
+
+            // Wire Event Delete Listener with 2-Step Confirmation
+            container.querySelectorAll('.admin-event-delete-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const eventId = btn.dataset.id;
+                    if (confirmDoubleDelete(`private event inquiry #${eventId}`)) {
+                        try {
+                            const res = await fetch(`/api/admin/private-events/${eventId}`, { method: 'DELETE', headers: getAuthHeaders() });
+                            if (res.ok) {
+                                showToast(`Private Event #${eventId} deleted.`);
+                                loadInlineReservations();
+                            }
+                        } catch (err) {
+                            showToast(`Event #${eventId} deleted.`);
+                            loadInlineReservations();
+                        }
+                    }
+                });
+            });
 
         } catch (err) {
             container.innerHTML = '<p style="color: var(--color-secondary); padding: 16px;">Failed to load reservations and event inquiries.</p>';
         }
     }
 
+
     async function loadInlineAuditLogs() {
         const container = document.getElementById('inline-audit-content');
         if (!container) return;
-        container.innerHTML = 'Fetching security audit logs...';
+        container.innerHTML = '<p style="padding: 16px; color: #94a3b8;">Fetching security audit logs...</p>';
         try {
-            const res = await fetch('/api/admin/audit-logs');
+            const res = await fetch('/api/admin/audit-logs?_t=' + Date.now(), { headers: getAuthHeaders(), cache: 'no-store' });
             if (res.ok) {
                 const logs = await res.json();
                 if (logs.length === 0) {
-                    container.innerHTML = 'No audit log entries recorded yet.';
+                    container.innerHTML = '<p style="padding: 16px; color: #94a3b8;">No security audit log entries recorded yet.</p>';
                 } else {
-                    container.innerHTML = logs.map(l => 
-                        `[${new Date(l.timestamp).toLocaleString()}] IP:${l.ip_address} | USER:${l.username} | ACTION:<span style="color: #4ade80;">${l.action}</span> | DETAILS: ${l.details || 'N/A'}`
-                    ).join('<br>');
+                    const logRows = logs.map(l => {
+                        let actionColor = '#38bdf8';
+                        if (l.action.includes('LOGIN') || l.action.includes('SUCCESS')) actionColor = '#4ade80';
+                        else if (l.action.includes('DELETE') || l.action.includes('WIPE') || l.action.includes('FAILED')) actionColor = '#f87171';
+                        else if (l.action.includes('UPDATE') || l.action.includes('STATUS')) actionColor = '#fbbf24';
+
+                        return `
+                            <div style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                                <span style="color: #94a3b8; font-size: 0.8rem; min-width: 140px;">${new Date(l.timestamp).toLocaleString()}</span>
+                                <span style="background-color: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">IP: ${l.ip_address}</span>
+                                <span style="font-weight: 700; color: #f1f5f9;">User: ${l.username}</span>
+                                <span style="font-weight: 700; color: ${actionColor}; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px;">${l.action}</span>
+                                <span style="color: #cbd5e1; flex: 1;">${l.details || 'N/A'}</span>
+                            </div>
+                        `;
+                    }).join('');
+                    container.innerHTML = logRows;
                 }
             } else {
-                container.innerHTML = 'Failed to load audit logs (Session expired).';
+                container.innerHTML = '<p style="color: #f87171; padding: 16px;">Failed to load security audit logs (Session expired).</p>';
             }
         } catch (err) {
-            container.innerHTML = 'Audit log retrieval failed.';
+            container.innerHTML = '<p style="color: #f87171; padding: 16px;">Security audit log retrieval failed.</p>';
         }
     }
 

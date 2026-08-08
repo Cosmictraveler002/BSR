@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Table Reservation | Shokher Ranna (শখের রান্না){% endblock %}</title>
+    <meta name="description" content="Reserve your royal dining experience at Bengal Shokher Ranna. Premium multi-page booking system.">
+    <meta name="theme-color" content="#0f172a">
+    
+    <!-- Google Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Noto+Sans+Bengali:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+    
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="/style.css">
+    
+    <style>
+        :root[data-theme="dark"] {
+            --bg-body: #090d16;
+            --bg-card: #111827;
+            --bg-card-hover: #1f2937;
+            --bg-input: #1e293b;
+            --border-color: rgba(255, 255, 255, 0.12);
+            --text-primary: #f8fafc;
+            --text-muted: #94a3b8;
+            --gold-accent: #e09f3e;
+            --gold-glow: rgba(224, 159, 62, 0.25);
+            --secondary-crimson: #bb0024;
+        }
+
+        :root[data-theme="light"] {
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f1f5f9;
+            --bg-input: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-muted: #64748b;
+            --gold-accent: #d97706;
+            --gold-glow: rgba(217, 119, 6, 0.2);
+            --secondary-crimson: #bb0024;
+        }
+
+        body.res-system-body {
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .res-header {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 16px 24px;
+        }
+
+        [data-theme="light"] .res-header {
+            background: rgba(255, 255, 255, 0.88);
+        }
+
+        .res-nav-wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .res-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .res-brand-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--secondary-crimson), var(--gold-accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: 800;
+            box-shadow: 0 0 15px var(--gold-glow);
+        }
+
+        .res-brand-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(135deg, var(--text-primary), var(--gold-accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .theme-toggle-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 14px;
+            border-radius: 9999px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .theme-toggle-btn:hover {
+            border-color: var(--gold-accent);
+            box-shadow: 0 0 10px var(--gold-glow);
+        }
+
+        .res-main-container {
+            max-width: 860px;
+            width: 90%;
+            margin: 40px auto 80px;
+            flex: 1;
+        }
+
+        /* Step Progress Indicator */
+        .res-step-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        .res-step-bar::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--border-color);
+            z-index: 1;
+            transform: translateY(-50%);
+        }
+
+        .res-step-item {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            background-color: var(--bg-body);
+            padding: 0 8px;
+        }
+
+        .res-step-number {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background-color: var(--bg-card);
+            border: 2px solid var(--border-color);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .res-step-item.active .res-step-number {
+            border-color: var(--gold-accent);
+            background-color: var(--gold-accent);
+            color: #000000;
+            box-shadow: 0 0 15px var(--gold-glow);
+        }
+
+        .res-step-item.completed .res-step-number {
+            border-color: #10b981;
+            background-color: #10b981;
+            color: #ffffff;
+        }
+
+        .res-step-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .res-step-item.active .res-step-label {
+            color: var(--gold-accent);
+        }
+
+        /* Card Container */
+        .res-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 36px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+
+        .res-card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .res-card-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 28px;
+        }
+
+        .res-btn-primary {
+            background: linear-gradient(135deg, var(--secondary-crimson), #e09f3e);
+            color: #ffffff;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(187, 0, 36, 0.3);
+            text-decoration: none;
+        }
+
+        .res-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(224, 159, 62, 0.4);
+        }
+
+        .res-btn-secondary {
+            background-color: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .res-btn-secondary:hover {
+            border-color: var(--gold-accent);
+            color: var(--gold-accent);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="res-system-body">
+
+    <!-- Sticky Header -->
+    <header class="res-header">
+        <div class="res-nav-wrap">
+            <a href="/" class="res-brand">
+                <div class="res-brand-logo">BSR</div>
+                <div>
+                    <h1 class="res-brand-title">Bengal Shokher Ranna</h1>
+                    <span style="font-size: 0.72rem; color: var(--text-muted);">Royal Heritage Table Dining</span>
+                </div>
+            </a>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button type="button" class="theme-toggle-btn" id="theme-toggle">
+                    <span class="material-symbols-outlined" id="theme-icon" style="font-size: 18px;">dark_mode</span>
+                    <span id="theme-label">Dark Mode</span>
+                </button>
+                <a href="/" class="res-btn-secondary" style="padding: 6px 14px; font-size: 0.8rem;">
+                    <span class="material-symbols-outlined" style="font-size: 16px;">home</span> Home
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Step Content Container -->
+    <main class="res-main-container">
+        {% block step_progress %}{% endblock %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        // Dark Mode Persistence & Switcher
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const themeLabel = document.getElementById('theme-label');
+        const htmlElement = document.documentElement;
+
+        function setTheme(theme) {
+            htmlElement.setAttribute('data-theme', theme);
+            localStorage.setItem('bsr_res_theme', theme);
+            if (theme === 'dark') {
+                themeIcon.textContent = 'dark_mode';
+                themeLabel.textContent = 'Dark Mode';
+            } else {
+                themeIcon.textContent = 'light_mode';
+                themeLabel.textContent = 'Light Mode';
+            }
+        }
+
+        const savedTheme = localStorage.getItem('bsr_res_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        setTheme(savedTheme);
+
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', () => {
+                const currentTheme = htmlElement.getAttribute('data-theme');
+                const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                setTheme(nextTheme);
+            });
+        }
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

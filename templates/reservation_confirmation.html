@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Reservation Confirmed #{{ reservation.id }} | BSR Dining{% endblock %}
+
+{% block extra_head %}
+<style>
+    .confirmation-banner {
+        text-align: center;
+        padding: 24px 0 32px;
+    }
+
+    .success-icon-wrap {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background-color: rgba(16, 185, 129, 0.15);
+        border: 2px solid #10b981;
+        color: #10b981;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+    }
+
+    .booking-receipt-card {
+        background-color: var(--bg-card-hover);
+        border: 1px dashed var(--gold-accent);
+        border-radius: 16px;
+        padding: 28px;
+        margin-bottom: 32px;
+    }
+
+    .receipt-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.95rem;
+    }
+
+    .receipt-row:last-child {
+        border-bottom: none;
+    }
+
+    @media print {
+        header, .res-step-bar, .no-print {
+            display: none !important;
+        }
+        body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+        .res-card {
+            box-shadow: none !important;
+            border: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block step_progress %}
+<div class="res-step-bar no-print">
+    <div class="res-step-item completed">
+        <div class="res-step-number">✓</div>
+        <span class="res-step-label">Party & Type</span>
+    </div>
+    <div class="res-step-item completed">
+        <div class="res-step-number">✓</div>
+        <span class="res-step-label">Date & Atmosphere</span>
+    </div>
+    <div class="res-step-item completed">
+        <div class="res-step-number">✓</div>
+        <span class="res-step-label">Guest Details</span>
+    </div>
+    <div class="res-step-item active">
+        <div class="res-step-number">✓</div>
+        <span class="res-step-label">Confirmed</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="res-card">
+    <div class="confirmation-banner">
+        <div class="success-icon-wrap">
+            <span class="material-symbols-outlined" style="font-size: 40px;">check_circle</span>
+        </div>
+        <h2 class="res-card-title" style="font-size: 2rem;">Royal Reservation Confirmed!</h2>
+        <p class="res-card-subtitle" style="font-size: 1.05rem;">We look forward to serving you an authentic Bengali culinary feast.</p>
+    </div>
+
+    <!-- Booking Receipt Card -->
+    <div class="booking-receipt-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
+            <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">RESERVATION ID</span>
+                <h3 style="margin: 2px 0 0; font-family: monospace; font-size: 1.4rem; color: var(--gold-accent);">#RES-2026-{{ reservation.id }}</h3>
+            </div>
+            <span style="background-color: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">
+                {{ reservation.status }}
+            </span>
+        </div>
+
+        <div class="receipt-row">
+            <span style="color: var(--text-muted);">Guest Name:</span>
+            <strong>{{ reservation.guest_name }}</strong>
+        </div>
+        <div class="receipt-row">
+            <span style="color: var(--text-muted);">Phone Number:</span>
+            <strong>📞 {{ reservation.phone }}</strong>
+        </div>
+        {% if reservation.email %}
+        <div class="receipt-row">
+            <span style="color: var(--text-muted);">Email Address:</span>
+            <strong>✉️ {{ reservation.email }}</strong>
+        </div>
+        {% endif %}
+        <div class="receipt-row">
+            <span style="color: var(--text-muted);">Reservation Date & Time:</span>
+            <strong style="color: var(--gold-accent);">📅 {{ reservation.reservation_date }} at ⏰ {{ reservation.reservation_time }}</strong>
+        </div>
+        <div class="receipt-row">
+            <span style="color: var(--text-muted);">Party Size:</span>
+            <strong>👥 {{ reservation.guests_count }} Guests</strong>
+        </div>
+        <div class="receipt-row">
+            <span style="color: var(--text-muted);">Special Requests / Notes:</span>
+            <span>{{ reservation.special_request or 'None' }}</span>
+        </div>
+    </div>
+
+    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <button type="button" class="res-btn-secondary" onclick="window.print()">
+            <span class="material-symbols-outlined">print</span>
+            <span>Print Receipt</span>
+        </button>
+
+        <a href="/" class="res-btn-primary">
+            <span class="material-symbols-outlined">restaurant_menu</span>
+            <span>Explore Menu & Return Home</span>
+        </a>
+    </div>
+</div>
+{% endblock %}

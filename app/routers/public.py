@@ -1,12 +1,15 @@
 import json
 import random
 import datetime
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Order, Reservation, PrivateEvent
+from app.core.config import settings
+from app.core.db_sync import bump_db_revision
+from app.core.firestore_db import save_document, get_document
 from app.schemas import (
     OrderCreate, OrderOut, OrderItemSchema,
     ReservationCreate, ReservationOut,
@@ -16,6 +19,19 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api", tags=["Public Frontend API"])
 
+@router.get("/config/firebase")
+def get_firebase_web_config():
+    """Returns public Firebase Web SDK configuration."""
+    return {
+        "apiKey": settings.FIREBASE_API_KEY,
+        "authDomain": settings.FIREBASE_AUTH_DOMAIN,
+        "projectId": settings.FIREBASE_PROJECT_ID,
+        "storageBucket": settings.FIREBASE_STORAGE_BUCKET,
+        "messagingSenderId": settings.FIREBASE_MESSAGING_SENDER_ID,
+        "appId": settings.FIREBASE_APP_ID,
+        "measurementId": settings.FIREBASE_MEASUREMENT_ID
+    }
+
 # Available Coupons Registry
 VALID_COUPONS = {
     "BENGAL10": {"rate": 0.10, "message": "10% Bengal Festival Discount Applied!"},
@@ -24,10 +40,23 @@ VALID_COUPONS = {
     "WELCOME5": {"rate": 0.05, "message": "5% Welcome Discount Applied!"}
 }
 
+import secrets
+
+# Official Menu Catalog Prices for Server-Side Validation
+MENU_PRICES = {
+    "Sorshe Ilish": 850.0,
+    "Kosha Mangsho": 750.0,
+    "Chingri Malai": 650.0,
+    "Artisanal Mishti": 350.0,
+    "Kachchi Biryani": 450.0,
+    "Basmati Rice": 120.0,
+    "Luchi": 40.0,
+}
+
 def generate_order_id() -> str:
-    """Generates a formatted unique order ID."""
-    rand_num = random.randint(1000, 9999)
-    return f"BSR-2026-{rand_num}"
+    """Generates a cryptographically secure unique order ID."""
+    rand_hex = secrets.token_hex(4).upper()
+    return f"BSR-2026-{rand_hex}"
 
 @router.post("/coupons/verify", response_model=CouponVerifyOut)
 def verify_coupon(payload: CouponVerify):
@@ -50,15 +79,29 @@ def verify_coupon(payload: CouponVerify):
 
 @router.post("/orders", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
-    """Creates a new food order in the database."""
+    """Creates a new food order with server-side price validation."""
     if not order_data.items:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order must contain at least one food item."
         )
 
-    # Calculate subtotal
-    subtotal = sum(item.price * item.qty for item in order_data.items)
+    # Server-Side Price & Subtotal Validation (Prevent client-side price manipulation)
+    items_validated = []
+    subtotal = 0.0
+    for item in order_data.items:
+        # Use canonical price from MENU_PRICES if matched, otherwise rely on validated schema price
+        canonical_price = MENU_PRICES.get(item.name, item.price)
+        line_subtotal = round(canonical_price * item.qty, 2)
+        subtotal += line_subtotal
+        items_validated.append({
+            "id": item.id,
+            "name": item.name,
+            "price": canonical_price,
+            "qty": item.qty
+        })
+
+    subtotal = round(subtotal, 2)
     
     # Calculate discount
     discount = 0.0
@@ -81,8 +124,7 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
         order_id = generate_order_id()
 
     # Convert items list to JSON text for DB storage
-    items_dicts = [item.dict() for item in order_data.items]
-    items_json_str = json.dumps(items_dicts)
+    items_json_str = json.dumps(items_validated)
 
     new_order = Order(
         id=order_id,
@@ -96,12 +138,15 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
         discount=discount,
         coupon_code=coupon_code,
         total=total,
-        status="Confirmed"
+        status="Confirmed",
+        outlet_id=order_data.outlet_id or "OUTLET-01"
     )
 
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
+    bump_db_revision()
+    save_document("orders", new_order.id, new_order.to_dict())
 
     # Convert back items for schema response
     return OrderOut(
@@ -111,23 +156,49 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
         order_type=new_order.order_type,
         delivery_address=new_order.delivery_address,
         table_number=new_order.table_number,
-        items=[OrderItemSchema(**item) for item in items_dicts],
+        items=[OrderItemSchema(**item) for item in items_validated],
         subtotal=new_order.subtotal,
         discount=new_order.discount,
         coupon_code=new_order.coupon_code,
         total=new_order.total,
         status=new_order.status,
+        outlet_id=new_order.outlet_id,
         created_at=new_order.created_at
     )
 
 @router.get("/orders/{order_id}", response_model=OrderOut)
-def get_order_by_id(order_id: str, db: Session = Depends(get_db)):
-    """Retrieves a single order by ID."""
-    order = db.query(Order).filter(Order.id == order_id).first()
+def get_order_by_id(order_id: str, phone: Optional[str] = None, db: Session = Depends(get_db)):
+    """Retrieves a single order by ID with optional phone verification for IDOR protection."""
+    query = db.query(Order).filter(Order.id == order_id)
+    if phone:
+        query = query.filter(Order.customer_phone == phone.strip())
+    
+    order = query.first()
     if not order:
+        # Check Firestore if missing in SQLite
+        fs_order = get_document("orders", order_id)
+        if fs_order and (not phone or fs_order.get("customer_phone") == phone.strip()):
+            items = [OrderItemSchema(**i) for i in json.loads(fs_order.get("items_json", "[]"))]
+            return OrderOut(
+                id=fs_order["id"],
+                customer_name=fs_order.get("customer_name", ""),
+                customer_phone=fs_order.get("customer_phone", ""),
+                order_type=fs_order.get("order_type", "Delivery"),
+                delivery_address=fs_order.get("delivery_address"),
+                table_number=fs_order.get("table_number"),
+                items=items,
+                subtotal=fs_order.get("subtotal", 0.0),
+                discount=fs_order.get("discount", 0.0),
+                coupon_code=fs_order.get("coupon_code"),
+                total=fs_order.get("total", 0.0),
+                status=fs_order.get("status", "Confirmed"),
+                outlet_id=fs_order.get("outlet_id", "OUTLET-01"),
+                created_at=fs_order.get("created_at")
+            )
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Order with ID '{order_id}' was not found."
+            detail=f"Order with ID '{order_id}' was not found or verification failed."
         )
     
     items = [OrderItemSchema(**i) for i in json.loads(order.items_json)]
@@ -144,6 +215,7 @@ def get_order_by_id(order_id: str, db: Session = Depends(get_db)):
         coupon_code=order.coupon_code,
         total=order.total,
         status=order.status,
+        outlet_id=order.outlet_id or "OUTLET-01",
         created_at=order.created_at
     )
 
@@ -159,22 +231,29 @@ def create_reservation(res_data: ReservationCreate, db: Session = Depends(get_db
         reservation_time=res_data.reservation_time,
         special_request=res_data.special_request.strip() if res_data.special_request else None,
         event_type=res_data.event_type or "Table Booking",
-        status="Pending"
+        status="Pending",
+        outlet_id=res_data.outlet_id or "OUTLET-01"
     )
 
     db.add(new_res)
     db.commit()
     db.refresh(new_res)
+    bump_db_revision()
+    save_document("reservations", str(new_res.id), new_res.to_dict())
     return new_res
 
 @router.get("/reservations/{res_id}", response_model=ReservationOut)
-def get_reservation_by_id(res_id: int, db: Session = Depends(get_db)):
-    """Retrieves table reservation details by ID."""
-    res = db.query(Reservation).filter(Reservation.id == res_id).first()
+def get_reservation_by_id(res_id: int, phone: Optional[str] = None, db: Session = Depends(get_db)):
+    """Retrieves table reservation details by ID with optional phone verification."""
+    query = db.query(Reservation).filter(Reservation.id == res_id)
+    if phone:
+        query = query.filter(Reservation.phone == phone.strip())
+
+    res = query.first()
     if not res:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Reservation ID {res_id} not found."
+            detail=f"Reservation ID {res_id} not found or verification failed."
         )
     return res
 
@@ -190,10 +269,13 @@ def create_private_event(event_data: PrivateEventCreate, db: Session = Depends(g
         event_date=event_data.event_date.strip(),
         event_time=event_data.event_time.strip() if event_data.event_time else "TBD",
         special_notes=event_data.special_notes.strip() if event_data.special_notes else None,
-        status="Pending"
+        status="Pending",
+        outlet_id=event_data.outlet_id or "OUTLET-01"
     )
 
     db.add(new_event)
     db.commit()
     db.refresh(new_event)
+    bump_db_revision()
+    save_document("private_events", str(new_event.id), new_event.to_dict())
     return new_event

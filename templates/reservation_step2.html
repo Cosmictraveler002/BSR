@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Step 2: Date, Time & Seating Atmosphere | BSR Dining{% endblock %}
+
+{% block extra_head %}
+<style>
+    .form-group-custom {
+        margin-bottom: 24px;
+    }
+
+    .form-label-custom {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+        color: var(--gold-accent);
+    }
+
+    .form-control-dark {
+        width: 100%;
+        padding: 14px 18px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-input);
+        color: var(--text-primary);
+        font-size: 1rem;
+        font-family: inherit;
+        outline: none;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .form-control-dark:focus {
+        border-color: var(--gold-accent);
+        box-shadow: 0 0 15px var(--gold-glow);
+    }
+
+    .slot-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .slot-chip {
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-card-hover);
+        color: var(--text-primary);
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .slot-chip:hover {
+        border-color: var(--gold-accent);
+        color: var(--gold-accent);
+    }
+
+    .slot-chip.selected {
+        background-color: var(--gold-accent);
+        border-color: var(--gold-accent);
+        color: #000000;
+        box-shadow: 0 0 15px var(--gold-glow);
+    }
+
+    .zone-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+    }
+
+    .zone-card {
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 18px;
+        background-color: var(--bg-card-hover);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .zone-card:hover {
+        border-color: var(--gold-accent);
+        transform: translateY(-2px);
+    }
+
+    .zone-card.selected {
+        border-color: var(--gold-accent);
+        background: linear-gradient(135deg, rgba(224, 159, 62, 0.12), rgba(187, 0, 36, 0.08));
+        box-shadow: 0 0 15px var(--gold-glow);
+    }
+</style>
+{% endblock %}
+
+{% block step_progress %}
+<div class="res-step-bar">
+    <div class="res-step-item completed">
+        <div class="res-step-number">✓</div>
+        <span class="res-step-label">Party & Type</span>
+    </div>
+    <div class="res-step-item active">
+        <div class="res-step-number">2</div>
+        <span class="res-step-label">Date & Atmosphere</span>
+    </div>
+    <div class="res-step-item">
+        <div class="res-step-number">3</div>
+        <span class="res-step-label">Guest Details</span>
+    </div>
+    <div class="res-step-item">
+        <div class="res-step-number">4</div>
+        <span class="res-step-label">Confirmation</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="res-card">
+    <h2 class="res-card-title">Schedule Date & Dining Atmosphere</h2>
+    <p class="res-card-subtitle">Select your reservation timing and preferred table zone at Bengal Shokher Ranna.</p>
+
+    <form action="/reserve/step2" method="POST" id="step2-form">
+        
+        <div class="form-group-custom">
+            <label class="form-label-custom">1. Reservation Date</label>
+            <input type="date" name="reservation_date" class="form-control-dark" value="{{ reservation_date }}" required min="{{ min_date }}">
+        </div>
+
+        <div class="form-group-custom">
+            <label class="form-label-custom">2. Dining Time Slot</label>
+            <input type="hidden" name="reservation_time" id="reservation_time_input" value="{{ reservation_time }}">
+            
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0; margin-bottom: 10px;">Lunch Slots</p>
+            <div class="slot-grid">
+                {% for slot in ['12:30', '13:00', '13:30', '14:00', '14:30'] %}
+                <div class="slot-chip {% if reservation_time == slot %}selected{% endif %}" onclick="selectSlot('{{ slot }}')">{{ slot }}</div>
+                {% endfor %}
+            </div>
+
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0; margin-bottom: 10px;">Dinner & Evening Royal Slots</p>
+            <div class="slot-grid">
+                {% for slot in ['19:00', '19:30', '20:00', '20:30', '21:00', '21:30'] %}
+                <div class="slot-chip {% if reservation_time == slot %}selected{% endif %}" onclick="selectSlot('{{ slot }}')">{{ slot }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-group-custom">
+            <label class="form-label-custom">3. Dining Atmosphere & Zone</label>
+            <input type="hidden" name="seating_zone" id="seating_zone_input" value="{{ seating_zone }}">
+
+            <div class="zone-grid">
+                <div class="zone-card {% if seating_zone == 'Main Royal Hall' %}selected{% endif %}" onclick="selectZone('Main Royal Hall')">
+                    <h4 style="margin: 0 0 4px; font-size: 1rem; color: var(--text-primary);">Main Royal Hall</h4>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Central chandelier hall with live classical music atmosphere.</p>
+                </div>
+                <div class="zone-card {% if seating_zone == 'Veranda Garden View' %}selected{% endif %}" onclick="selectZone('Veranda Garden View')">
+                    <h4 style="margin: 0 0 4px; font-size: 1rem; color: var(--text-primary);">Veranda Terrace</h4>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Open-air garden view terrace with romantic candlelit tables.</p>
+                </div>
+                <div class="zone-card {% if seating_zone == 'Private Bengal Suite' %}selected{% endif %}" onclick="selectZone('Private Bengal Suite')">
+                    <h4 style="margin: 0 0 4px; font-size: 1rem; color: var(--text-primary);">Royal Bengal Suite</h4>
+                    <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Exclusive secluded dining suite for private family gatherings.</p>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; gap: 16px; margin-top: 32px;">
+            <a href="/reserve" class="res-btn-secondary">
+                <span class="material-symbols-outlined">arrow_back</span>
+                <span>Back</span>
+            </a>
+            <button type="submit" class="res-btn-primary">
+                <span>Continue to Guest Details</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function selectSlot(timeStr) {
+        document.getElementById('reservation_time_input').value = timeStr;
+        document.querySelectorAll('.slot-chip').forEach(chip => chip.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+    }
+
+    function selectZone(zoneName) {
+        document.getElementById('seating_zone_input').value = zoneName;
+        document.querySelectorAll('.zone-card').forEach(card => card.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+    }
+</script>
+{% endblock %}

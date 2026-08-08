@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Step 3: Guest Contact Details | BSR Dining{% endblock %}
+
+{% block extra_head %}
+<style>
+    .form-group-custom {
+        margin-bottom: 20px;
+    }
+
+    .form-label-custom {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 8px;
+        font-size: 0.92rem;
+        color: var(--gold-accent);
+    }
+
+    .form-control-dark {
+        width: 100%;
+        padding: 14px 18px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-input);
+        color: var(--text-primary);
+        font-size: 1rem;
+        font-family: inherit;
+        outline: none;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .form-control-dark:focus {
+        border-color: var(--gold-accent);
+        box-shadow: 0 0 15px var(--gold-glow);
+    }
+
+    .summary-preview {
+        background-color: var(--bg-card-hover);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 28px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: space-between;
+    }
+
+    .preview-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block step_progress %}
+<div class="res-step-bar">
+    <div class="res-step-item completed">
+        <div class="res-step-number">✓</div>
+        <span class="res-step-label">Party & Type</span>
+    </div>
+    <div class="res-step-item completed">
+        <div class="res-step-number">✓</div>
+        <span class="res-step-label">Date & Atmosphere</span>
+    </div>
+    <div class="res-step-item active">
+        <div class="res-step-number">3</div>
+        <span class="res-step-label">Guest Details</span>
+    </div>
+    <div class="res-step-item">
+        <div class="res-step-number">4</div>
+        <span class="res-step-label">Confirmation</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="res-card">
+    <h2 class="res-card-title">Guest Contact & Preferences</h2>
+    <p class="res-card-subtitle">Provide your contact details so our royal concierge can confirm your reservation.</p>
+
+    <!-- Booking Summary Preview Bar -->
+    <div class="summary-preview">
+        <div class="preview-item">
+            <span class="material-symbols-outlined" style="color: var(--gold-accent);">group</span>
+            <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">PARTY SIZE</span>
+                <strong style="font-size: 0.95rem; color: var(--text-primary);">{{ guests_count }} Guests ({{ booking_type.title() }})</strong>
+            </div>
+        </div>
+        <div class="preview-item">
+            <span class="material-symbols-outlined" style="color: var(--gold-accent);">calendar_month</span>
+            <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">DATE & TIME</span>
+                <strong style="font-size: 0.95rem; color: var(--text-primary);">{{ reservation_date }} at {{ reservation_time }}</strong>
+            </div>
+        </div>
+        <div class="preview-item">
+            <span class="material-symbols-outlined" style="color: var(--gold-accent);">chair</span>
+            <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">ZONE</span>
+                <strong style="font-size: 0.95rem; color: var(--text-primary);">{{ seating_zone }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <form action="/reserve/submit" method="POST" id="step3-form">
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+            <div class="form-group-custom">
+                <label class="form-label-custom">Full Guest Name *</label>
+                <input type="text" name="guest_name" class="form-control-dark" placeholder="e.g. Anirban Mukherjee" required value="{{ guest_name }}">
+            </div>
+
+            <div class="form-group-custom">
+                <label class="form-label-custom">Phone Number *</label>
+                <input type="tel" name="phone" class="form-control-dark" placeholder="e.g. +91 98765 43210" required value="{{ phone }}">
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+            <div class="form-group-custom">
+                <label class="form-label-custom">Email Address (Optional)</label>
+                <input type="email" name="email" class="form-control-dark" placeholder="e.g. anirban@example.com" value="{{ email }}">
+            </div>
+
+            <div class="form-group-custom">
+                <label class="form-label-custom">Special Occasion</label>
+                <select name="occasion" class="form-control-dark" style="cursor: pointer;">
+                    <option value="Regular Dining">Regular Dining / Feast</option>
+                    <option value="Birthday Celebration">Birthday Celebration</option>
+                    <option value="Wedding Anniversary">Wedding Anniversary</option>
+                    <option value="Business Meeting">Business Meeting</option>
+                    <option value="Family Reunion">Family Reunion</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group-custom">
+            <label class="form-label-custom">Special Requests or Dietary Preferences</label>
+            <textarea name="special_request" class="form-control-dark" rows="3" placeholder="e.g. Preference for non-spicy dishes, high chair requirement, or cake arrangement.">{{ special_request }}</textarea>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; gap: 16px; margin-top: 32px;">
+            <a href="/reserve/step2" class="res-btn-secondary">
+                <span class="material-symbols-outlined">arrow_back</span>
+                <span>Back</span>
+            </a>
+            <button type="submit" class="res-btn-primary">
+                <span class="material-symbols-outlined">check_circle</span>
+                <span>Confirm & Book Table</span>
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -4,6 +4,7 @@ import bcrypt
 from typing import Optional
 from fastapi import Request, HTTPException, status, Depends
 from jose import JWTError, jwt
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -59,6 +60,9 @@ def log_audit(db: Session, ip_address: str, username: str, action: str, details:
         )
         db.add(log_entry)
         db.commit()
+        db.refresh(log_entry)
+        from app.core.firestore_db import save_document
+        save_document("audit_logs", str(log_entry.id), log_entry.to_dict())
     except Exception as e:
         db.rollback()
         print(f"Error recording audit log: {e}")
@@ -102,7 +106,7 @@ def get_current_admin(request: Request, db: Session = Depends(get_db)) -> AdminU
             detail="Session expired or token verification failed. Please login again.",
         )
 
-    admin = db.query(AdminUser).filter(AdminUser.username == username, AdminUser.is_active == True).first()
+    admin = db.query(AdminUser).filter(func.lower(AdminUser.username) == username.lower(), AdminUser.is_active == True).first()
     if not admin:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -111,16 +115,64 @@ def get_current_admin(request: Request, db: Session = Depends(get_db)) -> AdminU
 
     return admin
 
+def get_current_admin_optional(request: Request, db: Session = Depends(get_db)) -> Optional[AdminUser]:
+    """Returns the logged in AdminUser or None if not authenticated (safe for HTML redirects)."""
+    token = request.cookies.get(settings.COOKIE_NAME)
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+
+    if not token:
+        return None
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username: str = payload.get("sub")
+        if not username:
+            return None
+        admin = db.query(AdminUser).filter(func.lower(AdminUser.username) == username.lower(), AdminUser.is_active == True).first()
+        return admin
+    except Exception:
+        return None
+
+def require_roles(allowed_roles: list):
+    """Dependency checker enforcing specific RBAC roles for protected endpoints."""
+    def role_checker(current_admin: AdminUser = Depends(get_current_admin)) -> AdminUser:
+        if current_admin.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Privilege level '{current_admin.role}' is insufficient for this action."
+            )
+        return current_admin
+    return role_checker
+
 def verify_csrf_token(request: Request):
     """
-    Optional CSRF check for state-changing admin actions.
-    Checks match between CSRF cookie and X-CSRF-Token header.
+    CSRF verification dependency for state-changing admin endpoints (POST, PATCH, DELETE).
+    Validates X-CSRF-Token header against bsr_csrf_token cookie or header presence.
     """
     header_csrf = request.headers.get(settings.CSRF_HEADER_NAME)
     cookie_csrf = request.cookies.get("bsr_csrf_token")
-    
-    if not header_csrf or not cookie_csrf or header_csrf != cookie_csrf:
+
+    if not header_csrf and not cookie_csrf:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="CSRF security validation failed. Invalid or missing CSRF token."
+            detail="CSRF security validation failed. Missing CSRF token."
         )
+
+    if header_csrf and cookie_csrf:
+        if header_csrf != cookie_csrf:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="CSRF security validation failed. Token mismatch."
+            )
+        return True
+
+    if header_csrf and len(header_csrf) >= 16:
+        return True
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="CSRF security validation failed. Header missing."
+    )

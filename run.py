@@ -26,6 +26,6 @@ if __name__ == "__main__":
 
     print(f"[+] Starting BSR Bengali Restaurant FastAPI Server on Host {host}, Port {port}...")
     print(f"[+] Website Portal: http://{host}:{port}/")
-    print(f"[+] Admin Security Hardened Portal: http://{host}:{port}/admin.html")
+    print(f"[+] Admin Security Hardened Portal: http://{host}:{port}/admin")
     print(f"[+] API Documentation: http://{host}:{port}/docs")
     uvicorn.run("app.main:app", host=host, port=port, reload=reload_mode)
