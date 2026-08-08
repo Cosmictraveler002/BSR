@@ -1851,6 +1851,10 @@ body {
 }
 
 @media (max-width: 768px) {
+    .site-header .brand-logo {
+        padding-left: 14px;
+    }
+
     body:not(.admin-page-body) {
         padding-bottom: 68px !important;
     }
