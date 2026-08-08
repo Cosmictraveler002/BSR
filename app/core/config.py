@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
 
     class Config:
-        env_file = ".env"
+        env_file = ".env" if os.path.exists(".env") else None
         case_sensitive = True
 
 settings = Settings()
