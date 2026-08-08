@@ -2,6 +2,8 @@ import os
 import json
 from typing import Optional
 from app.core.config import settings
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # ---------------------------------------------------------------------------
 # SQLAlchemy Engine (Local development with SQLite)
@@ -43,31 +45,24 @@ def init_firestore():
         return firestore_client
 
     try:
-        from google.cloud import firestore
-        from google.oauth2 import service_account
-
+        import firebase_admin
+        from firebase_admin import credentials, firestore
         cred = None
-        # Priority 1: JSON string from env variable (Vercel production)
         if settings.FIREBASE_CREDENTIALS_JSON:
             cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
-            cred = service_account.Credentials.from_service_account_info(cred_dict)
-        # Priority 2: Local file path
+            cred = credentials.Certificate(cred_dict)
         elif os.path.exists(settings.FIREBASE_CREDENTIALS_PATH):
-            cred = service_account.Credentials.from_service_account_file(settings.FIREBASE_CREDENTIALS_PATH)
-        # Priority 3: GOOGLE_APPLICATION_CREDENTIALS env
-        elif os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and os.path.exists(os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")):
-            cred = service_account.Credentials.from_service_account_file(os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+            cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
 
-        kwargs = {}
-        if settings.FIREBASE_PROJECT_ID:
-            kwargs["project"] = settings.FIREBASE_PROJECT_ID
-        if settings.FIREBASE_DATABASE_ID:
-            kwargs["database"] = settings.FIREBASE_DATABASE_ID
-        if cred:
-            kwargs["credentials"] = cred
-
-        firestore_client = firestore.Client(**kwargs)
-        print("[+] [BSR Firestore] Connected successfully to Cloud Firestore database.")
+        # Initialize the Firebase App if it hasn't been initialized yet
+        if not firebase_admin._apps:
+            firebase_admin.initialize_app(cred, {
+                'projectId': settings.FIREBASE_PROJECT_ID
+            })
+            
+        # Get the Firestore client directly from firebase_admin
+        firestore_client = firestore.client()
+        print("[+] [BSR Firestore] Connected successfully to Cloud Firestore.")
         return firestore_client
     except Exception as e:
         print(f"[!] [BSR Firestore] Initialization pending/skipped: {e}")
