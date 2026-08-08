@@ -26,17 +26,6 @@ app = FastAPI(
     redoc_url="/redoc" if not is_prod else None
 )
 
-@app.get("/api/debug-path")
-def debug_path(request: Request):
-    return {
-        "path": request.url.path,
-        "base_url": str(request.base_url),
-        "headers": dict(request.headers),
-        "scope_path": request.scope.get("path"),
-        "scope_root_path": request.scope.get("root_path"),
-    }
-
-
 # Custom Security & DB Revision Headers Middleware
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
