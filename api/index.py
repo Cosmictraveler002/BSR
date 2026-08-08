@@ -1,7 +1,7 @@
 """
 Vercel Serverless Entry Point
 Exports the FastAPI ASGI app for Vercel's Python runtime.
-Includes diagnostic fallback handler to expose startup errors as JSON.
+Includes VercelPathMiddleware to handle original request paths in ASGI scope.
 """
 import sys
 import os
@@ -12,6 +12,23 @@ if root_dir not in sys.path:
 
 try:
     from app.main import app
+
+    class VercelPathMiddleware:
+        """ASGI Middleware to adjust scope['path'] to match the original requested URL on Vercel."""
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] == "http":
+                headers = dict(scope.get("headers", []))
+                # Vercel passes the original requested path in x-matched-path header
+                matched_path = headers.get(b"x-matched-path")
+                if matched_path:
+                    scope["path"] = matched_path.decode("utf-8")
+            await self.app(scope, receive, send)
+
+    app = VercelPathMiddleware(app)
+
 except Exception as err:
     import traceback
     error_trace = traceback.format_exc()
