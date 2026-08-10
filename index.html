@@ -5,8 +5,90 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>বাঙালির শখের রান্নাঘর - ঐতিহ্যের স্বাদ, আধুনিক ছোঁয়ায়</title>
+    <!-- Favicon Assets -->
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <meta name="description"
-        content="বাঙালির শখের রান্নাঘর - Experience authentic Bengali cuisine crafted with heritage recipes and presented with modern elegance.">
+        content="বাঙালির শখের রান্নাঘর - Experience authentic Bengali & Tangra cuisine crafted with heritage recipes and presented with modern elegance.">
+
+    <!-- JSON-LD Structured Data Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://www.bangalirsokherrannaghor.in/#website",
+          "url": "https://www.bangalirsokherrannaghor.in",
+          "name": "বাঙালির শখের রান্নাঘর",
+          "alternateName": "Bengali Shokher Ranna",
+          "description": "বাঙালির শখের রান্নাঘর - Experience authentic Bengali & Tangra cuisine crafted with heritage recipes and presented with modern elegance."
+        },
+        {
+          "@type": "Restaurant",
+          "@id": "https://www.bangalirsokherrannaghor.in/#restaurant",
+          "name": "বাঙালির শখের রান্নাঘর",
+          "alternateName": "Bengali Shokher Rannaghor",
+          "image": [
+            "https://www.bangalirsokherrannaghor.in/apple-touch-icon.png"
+          ],
+          "logo": "https://www.bangalirsokherrannaghor.in/apple-touch-icon.png",
+          "url": "https://www.bangalirsokherrannaghor.in",
+          "telephone": "+91 33 2456 7890",
+          "email": "admin@bangalirsokherrannaghor.in",
+          "priceRange": "$$",
+          "menu": "https://www.bangalirsokherrannaghor.in/#menu",
+          "servesCuisine": "Bengali, Tangra",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Meet Me Cafe And Restaurant, B1/430, near Picnic Garden Bus Stand, B1, Block B",
+            "addressLocality": "Kalyani",
+            "addressRegion": "West Bengal",
+            "postalCode": "741235",
+            "addressCountry": "IN"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": "22.974921",
+            "longitude": "88.443696"
+          },
+          "hasMap": "https://www.google.com/maps/place/Meet+Me+Cafe+And+Restaurant/@22.974921,88.443696",
+          "openingHoursSpecification": [
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday"
+              ],
+              "opens": "12:00",
+              "closes": "22:30"
+            },
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": [
+                "Friday",
+                "Saturday",
+                "Sunday"
+              ],
+              "opens": "12:00",
+              "closes": "23:30"
+            }
+          ],
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.9",
+            "reviewCount": "248",
+            "bestRating": "5",
+            "worstRating": "1"
+          }
+        }
+      ]
+    }
+    </script>
+
+
 
     <!-- Google Fonts & Material Symbols -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,28 +116,22 @@
     <!-- Google Maps Preconnect & Map Embed Preload -->
     <link rel="preconnect" href="https://www.google.com">
     <link rel="preconnect" href="https://maps.googleapis.com">
-    <link rel="preload" as="document" href="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3674.3214541484055!2d88.4342!3d22.9772!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f89551c6c646b9%3A0xb695b28aa1a7bb02!2sBlock%20B%2C%20Kalyani%2C%20West%20Bengal%20741235!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin">
+    <link rel="preload" as="document" href="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d235093.06464062235!2d88.4436955!3d22.97492135!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f895dd07b910c5%3A0xb6a72fc46b725ff1!2sMeet%20Me%20Cafe%20And%20Restaurant!5e0!3m2!1sen!2sin!4v1786388961071!5m2!1sen!2sin">
 
     <!-- Pure Vanilla CSS Style File -->
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <!-- Full-Screen Application Preloader with Animated Culinary Palette -->
-    <div id="app-preloader" class="app-preloader">
-        <div class="preloader-content">
-            <div class="palette-container">
-                <div class="palette-ring"></div>
-                <div class="palette-core">
-                    <span class="material-symbols-outlined palette-icon">skillet</span>
-                </div>
+    <!-- Elegant Minimalist Loader -->
+    <div id="elegant-loader" class="elegant-loader">
+        <div class="loader-content">
+            <h2 class="loader-brand font-bengali">বাঙালির শখের রান্নাঘর</h2>
+            <div class="loader-progress-wrapper">
+                <div class="loader-progress-bar" id="loader-bar"></div>
             </div>
-            <h2 class="preloader-title font-bengali">বাঙালির শখের রান্নাঘর</h2>
-            <p class="preloader-subtitle">Loading Heritage Flavors...</p>
-            <div class="preloader-progress-track">
-                <div id="preloader-progress-bar" class="preloader-progress-bar"></div>
-            </div>
-            <span id="preloader-percent" class="preloader-percent">0%</span>
+            <div class="loader-percentage" id="loader-count">0%</div>
+            <p class="loader-text">Curating Heritage Flavors...</p>
         </div>
     </div>
 
@@ -112,6 +188,7 @@
                 <div class="hero-bg-solid" id="heroBgSolid"
                     style="background-image: url('https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=2000&auto=format&fit=crop');">
                 </div>
+                <div class="hero-image-overlay"></div>
             </div>
 
             <!-- ── SPOTLIGHT LAYER (Fluid Blob tracking mouse) ── -->
@@ -184,12 +261,6 @@
                         fresh spices, and ghee to take center stage. Every dish is cooked with love and historical
                         precision.
                     </p>
-                    <div style="padding-top: 8px;">
-                        <button id="read-story-btn" class="story-btn">
-                            <span>Discover Our Culinary Philosophy</span>
-                            <span class="material-symbols-outlined btn-icon">chevron_right</span>
-                        </button>
-                    </div>
                 </div>
             </div>
         </section>
@@ -214,7 +285,7 @@
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                        <div class="menu-filters">
+                        <div class="menu-filters" data-lenis-prevent>
                             <button class="menu-filter active" data-category="all">All Dishes</button>
                             <button class="menu-filter" data-category="mains">Main Courses</button>
                             <button class="menu-filter" data-category="seafood">Seafood</button>
@@ -236,10 +307,10 @@
                 </div>
 
                 <!-- Recipe Horizontal Slider Wrap -->
-                <div class="dishes-slider-wrap">
+                <div class="dishes-slider-wrap" data-lenis-prevent>
                     <div class="dishes-grid" id="dishes-container">
                         <!-- Dish 1 -->
-                        <article class="dish-card" data-category="seafood">
+                        <article class="dish-card" data-category="seafood" data-lenis-prevent>
                             <div class="dish-img-wrap">
                                 <img alt="Ilish Bhapa"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSFA1pX6GRqcxJJh6Bkx011tHEwTixp1ypzppoXTlojMrkvkdHPLhU0iYqMAylfeTV1sNRjJ2CgA_4qzx-nE7lUWZSPmnzvofG52prP8oe253FzRJFBKVUPjytJebyaz9hczWhmnW0Ulk-uoIvA-O24_Tjd8DhzHnkhGnDM2SDLBAKP1GbDVFV4cVzLQ53QCt0X17qxHx0T5_jZkcppKi5IIrFwUCxCU4KWNQp8GfpY6DtHEDt0Khfyw">
@@ -263,7 +334,7 @@
                         </article>
 
                         <!-- Dish 2 -->
-                        <article class="dish-card" data-category="mains">
+                        <article class="dish-card" data-category="mains" data-lenis-prevent>
                             <div class="dish-img-wrap">
                                 <img alt="Kosha Mangsho"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuDL1fV3JBcx36gH1LXmW0gnc9ot78QatVFw6djCEPzkLnqTmOowChE6gtKYjTOHcgXgix891GgDvk6mP7KEwk3MriAYGSfEat-X4jc1FhSz_1L3gFTOCz5Y9zjFbaAbKRKPEiSPkWfHZN7s_IH2yhs2wB7yEZ_37m4-GXuthEnvbsU_vtsT5oy9FI3MPLTywmhQJ-200VMKTO0t93FI9qZOYOGHGRTMkiANjOaFxE7r-bfpIFDrFLdj3Q">
@@ -287,7 +358,7 @@
                         </article>
 
                         <!-- Dish 3 -->
-                        <article class="dish-card" data-category="seafood">
+                        <article class="dish-card" data-category="seafood" data-lenis-prevent>
                             <div class="dish-img-wrap">
                                 <img alt="Chingri Malai Curry"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhHqDN9zW71PcsXEQ3DqtEnhKScjrZ8s-psQR8ygF531YEaNaROxmRwyDSwGJkNUcZhOzDdCmD5K3Mg9m2F3NTFs1etWEoXsCu45K8-B5KJLfMXdUBrKkkF-E7Va1eqWH0ni-P5MxDdAypuPbP6GOS4iWodjbgFq1HgI3MbOdTtCHbXttDRnjCWP2em3Y6PO8vYFYMQ3UTV-3KH1sLMmM-Sazdu1k8He4SKrtSUWYMuqbsRdqQfzdMHg">
@@ -310,7 +381,7 @@
                         </article>
 
                         <!-- Dish 4 -->
-                        <article class="dish-card" data-category="sweets">
+                        <article class="dish-card" data-category="sweets" data-lenis-prevent>
                             <div class="dish-img-wrap">
                                 <img alt="Artisanal Mishti"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuACUjY09R-a16dT8gVW0A6oq_dbWFqNpRvSiWeBfXdTwGgecmSYRAWJdG8dRUoV1ch96cPANCskkq5WWMYZf0-klYU5z3s-vsFZ3IFE-i8eUSr0rME1R_niq2F3mm8nfbJi6peWi9q17dsXmb4ZEfaZvuv73ysLeP7J0Hx44cwJTBHHPyh0FfGRSyl-DwrpVD11guIg_LBRJijXIXwvb43VrveITpepBir89YQv0Sq_T2ApNnuueLHpNQ">
@@ -406,15 +477,15 @@
                 <div class="contact-grid">
                     <div class="map-wrapper">
                         <iframe
-                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3674.3214541484055!2d88.4342!3d22.9772!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f89551c6c646b9%3A0xb695b28aa1a7bb02!2sBlock%20B%2C%20Kalyani%2C%20West%20Bengal%20741235!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
-                            loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Restaurant Map Location">
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d235093.06464062235!2d88.4436955!3d22.97492135!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f895dd07b910c5%3A0xb6a72fc46b725ff1!2sMeet%20Me%20Cafe%20And%20Restaurant!5e0!3m2!1sen!2sin!4v1786388961071!5m2!1sen!2sin"
+                            loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="Restaurant Map Location">
                         </iframe>
                     </div>
 
                     <address class="contact-card">
                         <div class="contact-item">
                             <h4>Address</h4>
-                            <p>B1/430, near Picnic Garden Bus Stand<br>B1, Block B, Kalyani, West Bengal 741235</p>
+                            <p>Meet Me Cafe And Restaurant<br>B1/430, near Picnic Garden Bus Stand<br>B1, Block B, Kalyani, West Bengal 741235</p>
                         </div>
                         <div class="contact-item">
                             <h4>Contact Details</h4>
@@ -675,17 +746,6 @@
                         Order Summary</h4>
                     <div id="checkout-item-list" class="checkout-item-list"></div>
 
-                    <!-- Promo Code Box -->
-                    <div class="coupon-box" style="margin-top: 20px;">
-                        <label class="form-label">Apply Promo Coupon</label>
-                        <div class="coupon-input-wrap">
-                            <input type="text" id="coupon-input" placeholder="e.g. BENGAL10" class="form-input"
-                                style="text-transform: uppercase;">
-                            <button id="apply-coupon-btn" class="btn btn-primary" type="button"
-                                style="padding: 8px 16px; font-size: 0.8rem;">Apply</button>
-                        </div>
-                        <div id="coupon-message" class="coupon-msg hidden"></div>
-                    </div>
 
                     <!-- Price Calculations -->
                     <div class="bill-details" style="margin-top: 20px;">
@@ -768,7 +828,8 @@
 
     <!-- Order History Modal -->
     <div id="history-modal" class="modal-backdrop">
-        <div class="modal-box" data-lenis-prevent style="max-width: 650px; max-height: 85vh; overflow-y: auto; padding: 32px;">
+        <div class="modal-box" data-lenis-prevent
+            style="max-width: 650px; max-height: 85vh; overflow-y: auto; padding: 32px;">
             <button id="close-history-btn" class="modal-close-btn">
                 <span class="material-symbols-outlined">close</span>
             </button>
@@ -896,7 +957,7 @@
                 </div>
 
                 <div class="social-links">
-                    <a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer" class="social-icon"
+                    <a href="https://www.instagram.com/cafe.meetme_/" target="_blank" rel="noopener noreferrer" class="social-icon"
                         title="Follow us on Instagram" aria-label="Instagram">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

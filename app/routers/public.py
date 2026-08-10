@@ -13,8 +13,7 @@ from app.core.firestore_db import save_document, get_document, get_next_id
 from app.schemas import (
     OrderCreate, OrderOut, OrderItemSchema,
     ReservationCreate, ReservationOut,
-    PrivateEventCreate, PrivateEventOut,
-    CouponVerify, CouponVerifyOut
+    PrivateEventCreate, PrivateEventOut
 )
 
 router = APIRouter(prefix="/api", tags=["Public Frontend API"])
@@ -34,10 +33,6 @@ def get_firebase_web_config():
 
 # Available Coupons Registry
 VALID_COUPONS = {
-    "BENGAL10": {"rate": 0.10, "message": "10% Bengal Festival Discount Applied!"},
-    "SHOKHER20": {"rate": 0.20, "message": "20% Royal Feast Special Discount Applied!"},
-    "WELCOME50": {"flat": 50.0, "message": "₹50 Welcome Discount Applied!"},
-    "WELCOME5": {"rate": 0.05, "message": "5% Welcome Discount Applied!"}
 }
 
 import secrets
@@ -58,24 +53,7 @@ def generate_order_id() -> str:
     rand_hex = secrets.token_hex(4).upper()
     return f"BSR-2026-{rand_hex}"
 
-@router.post("/coupons/verify", response_model=CouponVerifyOut)
-def verify_coupon(payload: CouponVerify):
-    """Verifies a promo coupon code and returns discount rate."""
-    code_upper = payload.code.strip().upper()
-    if code_upper in VALID_COUPONS:
-        info = VALID_COUPONS[code_upper]
-        return CouponVerifyOut(
-            valid=True,
-            code=code_upper,
-            rate=info.get("rate", 0.0),
-            message=info["message"]
-        )
-    return CouponVerifyOut(
-        valid=False,
-        code=code_upper,
-        rate=0.0,
-        message="Invalid or expired coupon code."
-    )
+
 
 @router.post("/orders", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
@@ -105,15 +83,6 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
     # Calculate discount
     discount = 0.0
     coupon_code = None
-    if order_data.coupon_code:
-        code_upper = order_data.coupon_code.strip().upper()
-        if code_upper in VALID_COUPONS:
-            coupon_code = code_upper
-            info = VALID_COUPONS[code_upper]
-            if "flat" in info:
-                discount = min(subtotal, float(info["flat"]))
-            elif "rate" in info:
-                discount = round(subtotal * info["rate"], 2)
 
     total = max(0.0, round(subtotal - discount, 2))
     created_at_dt = datetime.datetime.utcnow()

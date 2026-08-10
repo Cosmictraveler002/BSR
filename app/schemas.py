@@ -235,18 +235,6 @@ class AuditLogOut(BaseModel):
     class Config:
         from_attributes = True
 
-class CouponVerify(BaseModel):
-    code: str = Field(..., min_length=1, max_length=30)
-
-    @field_validator("code", mode="before")
-    def sanitize_code(cls, v):
-        return sanitize_text(v)
-
-class CouponVerifyOut(BaseModel):
-    valid: bool
-    code: str
-    rate: float
-    message: str
 
 class BatchDeleteSchema(BaseModel):
     ids: List[str]

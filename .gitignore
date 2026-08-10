@@ -29,11 +29,6 @@ scratch/
 serviceAccountKey.json
 *.json.key
 
-# Heavy Local Assets & Media Design Source Files
-BSR 01 cmyk.png
-*.psd
-*.ai
-*.raw
 
 # Logs & Temporary Data
 *.log

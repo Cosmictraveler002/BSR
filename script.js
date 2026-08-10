@@ -7,8 +7,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================================================
     // --- Performance Utilities (Throttle, Debounce, Mobile Detection) ---
     // ==========================================================================
-    const IS_MOBILE = window.innerWidth <= 768;
+    const IS_MOBILE = window.innerWidth <= 768; // Test marker: IS_MOBILE ? 800 : 2000
     if (IS_MOBILE) document.body.classList.add('is-mobile');
+
+    window.addEventListener('resize', debounce(() => {
+        const isMobileNow = window.innerWidth <= 768;
+        if (isMobileNow) {
+            document.body.classList.add('is-mobile');
+        } else {
+            document.body.classList.remove('is-mobile');
+        }
+    }, 200));
 
     function throttle(func, limit) {
         let inThrottle;
@@ -50,80 +59,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Full-Screen Asset Preloader with Progress Tracking ---
+    // --- Elegant Boot Loader Animation ---
     (function initAppPreloader() {
-        const preloader = document.getElementById('app-preloader');
-        const progressBar = document.getElementById('preloader-progress-bar');
-        const percentText = document.getElementById('preloader-percent');
+        const loaderScreen = document.getElementById('elegant-loader');
+        const loaderBar = document.getElementById('loader-bar');
+        const loaderCount = document.getElementById('loader-count');
 
-        if (!preloader) return;
-
-        const _preloadW = IS_MOBILE ? 800 : 2000;
-        const urlsToPreload = [
-            'BSR 01 cmyk.png',
-            `https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=${_preloadW}&auto=format&fit=crop`,
-            `https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?q=80&w=${_preloadW}&auto=format&fit=crop`,
-            `https://images.unsplash.com/photo-1606491956689-2ea866880c84?q=80&w=${_preloadW}&auto=format&fit=crop`,
-            `https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=${_preloadW}&auto=format&fit=crop`,
-            `https://images.unsplash.com/photo-1589301760014-d929f39ce9b1?q=80&w=${_preloadW}&auto=format&fit=crop`,
-            `https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=${_preloadW}&auto=format&fit=crop`
-        ];
-
-        document.querySelectorAll('img').forEach(img => {
-            if (img.src && !urlsToPreload.includes(img.src)) {
-                urlsToPreload.push(img.src);
-            }
-        });
-
-        let loadedCount = 0;
-        const totalAssets = urlsToPreload.length;
-        let progress = 0;
-
-        function updateProgress(targetPercent) {
-            progress = Math.min(100, Math.max(progress, targetPercent));
-            if (progressBar) progressBar.style.width = `${progress}%`;
-            if (percentText) percentText.textContent = `${Math.round(progress)}%`;
+        if (loaderScreen) {
+            let progress = 0;
+            
+            const loadingInterval = setInterval(() => {
+                // Adds a random jump between 5 and 15 to make it feel like real loading
+                progress += Math.random() * 12 + 3; 
+                
+                if (progress >= 100) progress = 100;
+                
+                // Update the UI
+                if (loaderBar) loaderBar.style.width = `${progress}%`;
+                if (loaderCount) loaderCount.innerText = `${Math.floor(progress)}%`;
+                
+                // Finish sequence
+                if (progress === 100) {
+                    clearInterval(loadingInterval);
+                    
+                    // Tiny pause at 100% before sliding up for dramatic effect
+                    setTimeout(() => {
+                        if (!document.body.classList.contains('admin-page-body')) {
+                            window.scrollTo(0, 0);
+                        }
+                        loaderScreen.classList.add('finished');
+                        
+                        // Remove from DOM after transition completes (1s transition + buffer)
+                        setTimeout(() => {
+                            if (document.body.contains(loaderScreen)) {
+                                loaderScreen.remove();
+                            }
+                        }, 1200);
+                    }, 400); 
+                }
+            }, 120); // Speed of the progress updates
         }
-
-        const loadPromises = urlsToPreload.map(url => {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = img.onerror = () => {
-                    loadedCount++;
-                    const percent = (loadedCount / totalAssets) * 100;
-                    updateProgress(percent);
-                    resolve();
-                };
-                img.src = url;
-            });
-        });
-
-        const minDisplayDuration = 700;
-
-        Promise.all([
-            Promise.all(loadPromises),
-            new Promise(res => setTimeout(res, minDisplayDuration))
-        ]).then(() => {
-            updateProgress(100);
-            setTimeout(() => {
-                if (!document.body.classList.contains('admin-page-body')) window.scrollTo(0, 0);
-                preloader.classList.add('fade-out');
-                setTimeout(() => {
-                    if (document.body.contains(preloader)) preloader.remove();
-                }, 600);
-            }, 200);
-        });
-
-        setTimeout(() => {
-            if (document.body.contains(preloader)) {
-                updateProgress(100);
-                if (!document.body.classList.contains('admin-page-body')) window.scrollTo(0, 0);
-                preloader.classList.add('fade-out');
-                setTimeout(() => {
-                    if (document.body.contains(preloader)) preloader.remove();
-                }, 600);
-            }
-        }, 3500);
     })();
     // --- Mobile Menu Toggle ---
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
@@ -216,83 +191,44 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof Lenis !== 'undefined') {
         const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
 
-        // Apple-like Weighted Physics Setup:
-        // lerp: 0.08 & wheelMultiplier: 1.2 for controlled inertia without floaty "slipping on ice" feel
-        lenis = new Lenis({
-            duration: 1.2,
-            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // easeOutExpo decay curve
-            lerp: 0.08,
-            wheelMultiplier: 1.2,
-            touchMultiplier: 1.0,
-            smoothWheel: true,
-            smoothTouch: false, // Explicitly disabled on touch devices to maintain native accessibility
-            syncTouch: false
-        });
-
-        // GSAP ScrollTrigger Synchronization via rAF Ticker
-        if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
-            gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
-
-            // Synchronize GSAP ScrollTrigger on every Lenis scroll tick
-            lenis.on('scroll', ScrollTrigger.update);
-
-            // Drive Lenis scroll engine using GSAP's 60fps ticker
-            gsap.ticker.add((time) => {
-                lenis.raf(time * 1000);
+        if (!isTouchDevice) {
+            // Apple-like Weighted Physics Setup:
+            // lerp: 0.08 & wheelMultiplier: 1.2 for controlled inertia without floaty "slipping on ice" feel
+            lenis = new Lenis({
+                duration: 1.2,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // easeOutExpo decay curve
+                lerp: 0.08,
+                wheelMultiplier: 1.2,
+                touchMultiplier: 1.0,
+                smoothWheel: true,
+                smoothTouch: false, // Explicitly disabled on touch devices to maintain native accessibility
+                syncTouch: false
             });
 
-            // Prevent lag smoothing delays for 1:1 frame responsiveness
-            gsap.ticker.lagSmoothing(0);
+            // GSAP ScrollTrigger Synchronization via rAF Ticker
+            if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+                gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
-            // ----------------------------------------------------------------------
-            // Visual Reactivity Animations (Hardware-Accelerated: transform & opacity)
-            // ----------------------------------------------------------------------
-            if (!isTouchDevice) {
-                // 1. Subtle Text Reveal: Text block fades in and slides up (y: 30px -> 0px) as it enters viewport
-                gsap.utils.toArray('.gsap-text-reveal, .story-title, .menu-title, .contact-title, .feature-title, .section-label').forEach(textEl => {
-                    gsap.fromTo(textEl,
-                        { opacity: 0, y: 30 },
-                        {
-                            opacity: 1,
-                            y: 0,
-                            duration: 0.9,
-                            ease: "power2.out",
-                            scrollTrigger: {
-                                trigger: textEl,
-                                start: "top 88%",
-                                toggleActions: "play none none reverse"
-                            }
-                        }
-                    );
+                // Synchronize GSAP ScrollTrigger on every Lenis scroll tick
+                lenis.on('scroll', ScrollTrigger.update);
+
+                // Drive Lenis scroll engine using GSAP's 60fps ticker
+                gsap.ticker.add((time) => {
+                    if (lenis) lenis.raf(time * 1000);
                 });
 
-                // 2. Subtle Parallax: Image moves slightly slower than scroll speed for premium depth
-                gsap.utils.toArray('.gsap-parallax-img, .story-image-frame img, .hero-image-card img').forEach(imgEl => {
-                    const parentWrap = imgEl.closest('.gsap-parallax-wrap, .story-image-frame, .hero-image-card') || imgEl.parentElement;
-                    gsap.fromTo(imgEl,
-                        { yPercent: -12 },
-                        {
-                            yPercent: 12,
-                            ease: "none",
-                            scrollTrigger: {
-                                trigger: parentWrap,
-                                start: "top bottom",
-                                end: "bottom top",
-                                scrub: true
-                            }
-                        }
-                    );
-                });
-            }
-        } else {
-            function raf(time) {
-                lenis.raf(time);
+                // Prevent lag smoothing delays for 1:1 frame responsiveness
+                gsap.ticker.lagSmoothing(0);
+            } else {
+                function raf(time) {
+                    if (lenis) lenis.raf(time);
+                    requestAnimationFrame(raf);
+                }
                 requestAnimationFrame(raf);
             }
-            requestAnimationFrame(raf);
         }
 
-        // Connect anchor links through Lenis physics engine
+        // Connect anchor links through Lenis physics engine (with fallback to native smooth scroll)
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 const targetId = this.getAttribute('href');
@@ -300,15 +236,62 @@ document.addEventListener('DOMContentLoaded', () => {
                     const targetEl = document.querySelector(targetId);
                     if (targetEl) {
                         e.preventDefault();
-                        lenis.scrollTo(targetEl, { offset: -70, duration: 1.2 });
+                        if (lenis) {
+                            lenis.scrollTo(targetEl, { offset: -70, duration: 1.2 });
+                        } else {
+                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
                     }
                 }
             });
         });
+
+        // ----------------------------------------------------------------------
+        // Visual Reactivity Animations (Hardware-Accelerated: transform & opacity)
+        // ----------------------------------------------------------------------
+        if (!isTouchDevice && typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+            // 1. Subtle Text Reveal: Text block fades in and slides up (y: 30px -> 0px) as it enters viewport
+            gsap.utils.toArray('.gsap-text-reveal, .story-title, .menu-title, .contact-title, .feature-title, .section-label').forEach(textEl => {
+                gsap.fromTo(textEl,
+                    { opacity: 0, y: 30 },
+                    {
+                        opacity: 1,
+                        y: 0,
+                        duration: 0.9,
+                        ease: "power2.out",
+                        scrollTrigger: {
+                            trigger: textEl,
+                            start: "top 88%",
+                            toggleActions: "play none none reverse"
+                        }
+                    }
+                );
+            });
+
+            // 2. Subtle Parallax: Image moves slightly slower than scroll speed for premium depth
+            gsap.utils.toArray('.gsap-parallax-img, .story-image-frame img, .hero-image-card img').forEach(imgEl => {
+                const parentWrap = imgEl.closest('.gsap-parallax-wrap, .story-image-frame, .hero-image-card') || imgEl.parentElement;
+                gsap.fromTo(imgEl,
+                    { yPercent: -12 },
+                    {
+                        yPercent: 12,
+                        ease: "none",
+                        scrollTrigger: {
+                            trigger: parentWrap,
+                            start: "top bottom",
+                            end: "bottom top",
+                            scrub: true
+                        }
+                    }
+                );
+            });
+        }
     }
 
     function handleMnavHome(e) {
         if (e) e.preventDefault();
+        if (navigator.vibrate) navigator.vibrate(15);
+        if (mnavHome) mnavHome.blur();
         setActiveMobileNavItem(mnavHome);
         if (lenis) {
             lenis.scrollTo(0, { duration: 1.0 });
@@ -319,6 +302,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleMnavMenu(e) {
         if (e) e.preventDefault();
+        if (navigator.vibrate) navigator.vibrate(15);
+        if (mnavMenu) mnavMenu.blur();
         setActiveMobileNavItem(mnavMenu);
         const menuSection = document.getElementById('menu');
         if (menuSection) {
@@ -334,32 +319,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleMnavReserve(e) {
         if (e) e.preventDefault();
-        setActiveMobileNavItem(mnavReserve);
+        if (navigator.vibrate) navigator.vibrate(15);
+        if (mnavReserve) mnavReserve.blur();
         initReservationDateTimeValidation();
         toggleReservationModal(true);
     }
 
     function handleMnavCart(e) {
         if (e) e.preventDefault();
-        setActiveMobileNavItem(mnavCart);
+        if (navigator.vibrate) navigator.vibrate(15);
+        if (mnavCart) mnavCart.blur();
         toggleCartDrawer(true);
     }
 
     if (mnavHome) {
         mnavHome.addEventListener('click', handleMnavHome);
-        mnavHome.addEventListener('touchend', (e) => { e.preventDefault(); handleMnavHome(e); }, { passive: false });
     }
     if (mnavMenu) {
         mnavMenu.addEventListener('click', handleMnavMenu);
-        mnavMenu.addEventListener('touchend', (e) => { e.preventDefault(); handleMnavMenu(e); }, { passive: false });
     }
     if (mnavReserve) {
         mnavReserve.addEventListener('click', handleMnavReserve);
-        mnavReserve.addEventListener('touchend', (e) => { e.preventDefault(); handleMnavReserve(e); }, { passive: false });
     }
     if (mnavCart) {
         mnavCart.addEventListener('click', handleMnavCart);
-        mnavCart.addEventListener('touchend', (e) => { e.preventDefault(); handleMnavCart(e); }, { passive: false });
     }
 
     // Scroll spy for mobile bottom nav active state
@@ -626,7 +609,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let lastX = 0;
         let momentumID;
 
-        dishesSliderWrap.addEventListener('mousedown', (e) => {
+        dishesSliderWrap.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'touch') return;
             isDown = true;
             dishesSliderWrap.style.cursor = 'grabbing';
             startX = e.pageX - dishesSliderWrap.offsetLeft;
@@ -644,19 +628,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        dishesSliderWrap.addEventListener('mouseleave', () => {
+        dishesSliderWrap.addEventListener('pointerleave', (e) => {
+            if (e.pointerType === 'touch') return;
             if (isDown) applyMomentum();
             isDown = false;
             dishesSliderWrap.style.cursor = '';
         });
 
-        dishesSliderWrap.addEventListener('mouseup', () => {
+        dishesSliderWrap.addEventListener('pointerup', (e) => {
+            if (e.pointerType === 'touch') return;
             if (isDown) applyMomentum();
             isDown = false;
             dishesSliderWrap.style.cursor = '';
         });
 
-        dishesSliderWrap.addEventListener('mousemove', (e) => {
+        dishesSliderWrap.addEventListener('pointermove', (e) => {
+            if (e.pointerType === 'touch') return;
             if (!isDown) return;
             e.preventDefault();
             const x = e.pageX - dishesSliderWrap.offsetLeft;
@@ -750,14 +737,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const ordersHistoryBtn = document.getElementById('orders-history-btn');
     const ordersBadge = document.getElementById('orders-badge');
 
-    // Coupons
-    const couponInput = document.getElementById('coupon-input');
-    const applyCouponBtn = document.getElementById('apply-coupon-btn');
-    const couponMessage = document.getElementById('coupon-message');
-
     // Load initial cart from database
     let cart = bsrDB.getCart();
-    let appliedCoupon = null; // { code: 'BENGAL10', rate: 0.10 }
 
     function toggleCartDrawer(show) {
         if (!cartDrawer) return;
@@ -921,14 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tax = Math.round(subtotal * 0.05); // 5% GST
         const deliveryFee = (subtotal > 500 || subtotal === 0) ? 0 : 40; // Free delivery over ₹500
 
-        let discount = 0;
-        if (appliedCoupon) {
-            if (appliedCoupon.rate) {
-                discount = Math.round(subtotal * appliedCoupon.rate);
-            } else if (appliedCoupon.flat) {
-                discount = appliedCoupon.flat;
-            }
-        }
+        const discount = 0;
 
         const finalTotal = Math.max(0, subtotal + tax + deliveryFee - discount);
 
@@ -1019,38 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Coupon Apply Action
-    if (applyCouponBtn && couponInput) {
-        applyCouponBtn.addEventListener('click', () => {
-            const code = couponInput.value.trim().toUpperCase();
-            if (!code) {
-                couponMessage.textContent = 'Please enter a coupon code.';
-                couponMessage.className = 'coupon-msg error';
-                return;
-            }
 
-            if (code === 'BENGAL10') {
-                appliedCoupon = { code: 'BENGAL10', rate: 0.10 };
-                couponMessage.textContent = 'Coupon BENGAL10 Applied! (10% OFF)';
-                couponMessage.className = 'coupon-msg success';
-            } else if (code === 'SHOKHER20') {
-                appliedCoupon = { code: 'SHOKHER20', rate: 0.20 };
-                couponMessage.textContent = 'Coupon SHOKHER20 Applied! (20% OFF)';
-                couponMessage.className = 'coupon-msg success';
-            } else if (code === 'WELCOME50') {
-                appliedCoupon = { code: 'WELCOME50', flat: 50 };
-                couponMessage.textContent = 'Coupon WELCOME50 Applied! (₹50 OFF)';
-                couponMessage.className = 'coupon-msg success';
-            } else {
-                couponMessage.textContent = 'Invalid Coupon Code! Try BENGAL10 or SHOKHER20.';
-                couponMessage.className = 'coupon-msg error';
-                appliedCoupon = null;
-            }
-
-            couponMessage.classList.remove('hidden');
-            renderCheckoutSummary();
-        });
-    }
 
     // Checkout Form Submit -> Save Order to FastAPI Backend Database & Display Receipt
     if (checkoutForm) {
@@ -1085,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     price: item.price,
                     qty: item.quantity
                 })),
-                coupon_code: appliedCoupon ? appliedCoupon.code : null,
+                coupon_code: null,
                 outlet_id: selectedOutletId
             };
 
@@ -3993,6 +3936,385 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             container.innerHTML = '<p style="color: #f87171; padding: 16px;">Security audit log retrieval failed.</p>';
         }
+    }
+
+    // Standalone Checkout Page Controller
+    function initStandaloneCheckoutPage() {
+        const pageCartItems = document.getElementById('page-cart-items');
+        const pageCheckoutForm = document.getElementById('page-checkout-form');
+        const cartItemCount = document.getElementById('cart-item-count');
+        const pSubtotal = document.getElementById('p-subtotal');
+        const pTax = document.getElementById('p-tax');
+        const pDelivery = document.getElementById('p-delivery');
+        const pDiscountContainer = document.getElementById('p-discount-container');
+        const pDiscount = document.getElementById('p-discount');
+        const pFinalTotal = document.getElementById('p-final-total');
+        const pageClearCartBtn = document.getElementById('page-clear-cart-btn');
+        const pageHistoryList = document.getElementById('page-history-list');
+
+        let checkoutCart = bsrDB.getCart();
+        let discountAmount = 0;
+
+        function updateCheckoutTotals() {
+            let subtotal = checkoutCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            if (cartItemCount) {
+                cartItemCount.textContent = checkoutCart.reduce((sum, item) => sum + item.quantity, 0);
+            }
+            if (pSubtotal) pSubtotal.textContent = `₹${subtotal}`;
+            
+            // Calculate taxes (5%)
+            let tax = Math.round(subtotal * 0.05);
+            if (pTax) pTax.textContent = `₹${tax}`;
+
+            // Delivery charge (₹40 if cart has items and type is Delivery, otherwise 0)
+            const orderTypeRadios = document.getElementsByName('p-order-type');
+            const selectedRadio = Array.from(orderTypeRadios).find(r => r.checked);
+            const orderType = selectedRadio ? selectedRadio.value : 'Delivery';
+            let deliveryFee = (subtotal > 0 && orderType === 'Delivery') ? 40 : 0;
+            if (pDelivery) pDelivery.textContent = `₹${deliveryFee}`;
+
+            // Discount
+            discountAmount = 0;
+            if (pDiscountContainer) pDiscountContainer.classList.add('hidden');
+
+            let finalTotal = Math.max(0, subtotal + tax + deliveryFee - discountAmount);
+            if (pFinalTotal) pFinalTotal.textContent = `₹${finalTotal}`;
+        }
+
+        function renderCheckoutCart() {
+            if (!pageCartItems) return;
+            pageCartItems.innerHTML = '';
+
+            if (checkoutCart.length === 0) {
+                pageCartItems.innerHTML = `
+                    <p id="page-empty-cart" style="color: var(--color-text-muted); text-align: center; padding: 40px 0; width: 100%;">
+                        Your cart is currently empty. <a href="index.html#menu" style="color: var(--color-secondary); text-decoration: underline;">Browse our menu</a> to add dishes!
+                    </p>
+                `;
+                updateCheckoutTotals();
+                return;
+            }
+
+            checkoutCart.forEach((item, index) => {
+                const itemRow = document.createElement('div');
+                itemRow.className = 'page-cart-item';
+                itemRow.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        ${item.image ? `<img src="${item.image}" alt="${item.name}" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover;">` : '<span class="material-symbols-outlined" style="font-size: 32px; color: var(--color-text-muted);">restaurant</span>'}
+                        <div>
+                            <h4 class="font-bengali" style="font-weight: 700; font-size: 0.95rem; color: var(--color-primary); margin: 0;">${item.name}</h4>
+                            <span style="font-size: 0.8rem; color: var(--color-text-muted);">₹${item.price} each</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <div class="qty-stepper">
+                            <button class="qty-btn dec-btn" data-index="${index}">-</button>
+                            <span class="qty-val">${item.quantity}</span>
+                            <button class="qty-btn inc-btn" data-index="${index}">+</button>
+                        </div>
+                        <span style="font-weight: 700; font-size: 0.95rem; min-width: 60px; text-align: right;">₹${item.price * item.quantity}</span>
+                    </div>
+                `;
+                pageCartItems.appendChild(itemRow);
+            });
+
+            // Set up steppers
+            pageCartItems.querySelectorAll('.dec-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const index = parseInt(btn.dataset.index);
+                    if (checkoutCart[index].quantity > 1) {
+                        checkoutCart[index].quantity--;
+                    } else {
+                        checkoutCart.splice(index, 1);
+                    }
+                    bsrDB.saveCart(checkoutCart);
+                    renderCheckoutCart();
+                });
+            });
+
+            pageCartItems.querySelectorAll('.inc-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const index = parseInt(btn.dataset.index);
+                    checkoutCart[index].quantity++;
+                    bsrDB.saveCart(checkoutCart);
+                    renderCheckoutCart();
+                });
+            });
+
+            updateCheckoutTotals();
+        }
+
+        if (pageClearCartBtn) {
+            pageClearCartBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (confirm('Are you sure you want to clear your cart?')) {
+                    checkoutCart = [];
+                    bsrDB.saveCart([]);
+                    renderCheckoutCart();
+                    showToast('🛒 Cart cleared successfully.');
+                }
+            });
+        }
+
+
+
+        // Place Order Form Submit
+        if (pageCheckoutForm) {
+            const savedInfo = bsrDB.getCustomerInfo();
+            const nameInput = document.getElementById('p-name');
+            const phoneInput = document.getElementById('p-phone');
+            const emailInput = document.getElementById('p-email');
+            const addressInput = document.getElementById('p-address');
+
+            if (savedInfo.name && nameInput) nameInput.value = savedInfo.name;
+            if (savedInfo.phone && phoneInput) phoneInput.value = savedInfo.phone;
+            if (savedInfo.email && emailInput) emailInput.value = savedInfo.email;
+            if (savedInfo.address && addressInput) addressInput.value = savedInfo.address;
+
+            const orderTypeRadios = document.getElementsByName('p-order-type');
+            const addressLabel = document.getElementById('p-address-label');
+            
+            function updateAddressField() {
+                const selectedRadio = Array.from(orderTypeRadios).find(r => r.checked);
+                const orderType = selectedRadio ? selectedRadio.value : 'Delivery';
+                
+                updateCheckoutTotals();
+
+                if (addressLabel && addressInput) {
+                    if (orderType === 'Delivery') {
+                        addressLabel.textContent = 'Delivery Address *';
+                        addressInput.placeholder = 'Enter full delivery address in Kalyani';
+                        addressInput.required = true;
+                    } else if (orderType === 'Dine-In') {
+                        addressLabel.textContent = 'Table Number *';
+                        addressInput.placeholder = 'Enter dining Table Number (e.g. Table 04)';
+                        addressInput.required = true;
+                    } else {
+                        addressLabel.textContent = 'Pickup Point';
+                        addressInput.placeholder = 'e.g. Main counter pickup (optional)';
+                        addressInput.required = false;
+                    }
+                }
+            }
+
+            orderTypeRadios.forEach(radio => {
+                radio.addEventListener('change', updateAddressField);
+            });
+            updateAddressField();
+
+            pageCheckoutForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (checkoutCart.length === 0) {
+                    showToast('⚠️ Your cart is empty.');
+                    return;
+                }
+
+                const customerName = nameInput ? nameInput.value.trim() : '';
+                const customerPhone = phoneInput ? phoneInput.value.trim() : '';
+                const customerEmail = emailInput ? emailInput.value.trim() : '';
+                const deliveryAddress = addressInput ? addressInput.value.trim() : '';
+                const orderType = Array.from(orderTypeRadios).find(r => r.checked)?.value || 'Delivery';
+                const paymentMethod = document.querySelector('input[name="p-payment-method"]:checked')?.value || 'UPI / QR Code';
+
+                const subtotal = checkoutCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                const tax = Math.round(subtotal * 0.05);
+                const deliveryFee = orderType === 'Delivery' ? 40 : 0;
+                const finalTotal = Math.max(0, subtotal + tax + deliveryFee - discountAmount);
+
+                const payload = {
+                    customer_name: customerName,
+                    customer_phone: customerPhone,
+                    customer_email: customerEmail || null,
+                    order_type: orderType,
+                    delivery_address: deliveryAddress || 'N/A',
+                    payment_method: paymentMethod,
+                    coupon_code: null,
+                    items: checkoutCart.map(item => ({
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.price
+                    }))
+                };
+
+                const orderSubmitBtn = document.getElementById('page-place-order-btn');
+                if (orderSubmitBtn) {
+                    orderSubmitBtn.disabled = true;
+                    orderSubmitBtn.innerHTML = '<span class="material-symbols-outlined spinner-icon" style="animation: spin 1s linear infinite;">sync</span> Processing...';
+                }
+
+                try {
+                    const response = await fetch('/orders', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const responseData = await response.json();
+
+                    if (response.ok) {
+                        bsrDB.saveCustomerInfo({
+                            name: customerName,
+                            phone: customerPhone,
+                            email: customerEmail,
+                            address: deliveryAddress
+                        });
+
+                        checkoutCart = [];
+                        bsrDB.saveCart([]);
+                        bsrDB.saveOrder(responseData);
+
+                        document.getElementById('checkout-main-view').classList.add('hidden');
+                        document.getElementById('checkout-receipt-view').classList.remove('hidden');
+                        
+                        renderStandaloneReceipt(responseData);
+                        renderStandaloneHistory();
+                        showToast('🎉 Order placed successfully!');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } else {
+                        showToast(`❌ Order failed: ${responseData.detail || 'Server error'}`);
+                    }
+                } catch (err) {
+                    showToast('❌ Network error placing order.');
+                } finally {
+                    if (orderSubmitBtn) {
+                        orderSubmitBtn.disabled = false;
+                        orderSubmitBtn.innerHTML = '<span class="material-symbols-outlined">lock</span> Complete Purchase & Save Order';
+                    }
+                }
+            });
+        }
+
+        function renderStandaloneReceipt(order) {
+            const pReceiptContent = document.getElementById('p-receipt-content');
+            if (!pReceiptContent) return;
+
+            const itemsHtml = order.items.map(item => `
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; padding: 6px 0; border-bottom: 1px dotted var(--color-border-subtle);">
+                    <span>${item.name} (x${item.quantity})</span>
+                    <strong>₹${item.price * item.quantity}</strong>
+                </div>
+            `).join('');
+
+            pReceiptContent.innerHTML = `
+                <div class="receipt-card-wrapper" style="border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: 20px; background-color: var(--color-surface-white);">
+                    <div style="border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 12px; margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="color: var(--color-primary); font-size: 1rem;">Order ID: ${order.id}</strong>
+                            <span style="color: var(--color-text-muted); font-size: 0.75rem;">${new Date(order.created_at || Date.now()).toLocaleString()}</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 6px; line-height: 1.5;">
+                            Customer: <strong>${order.customer_name}</strong> (${order.customer_phone})<br>
+                            Type: <strong>${order.order_type}</strong> | Address/Table: <strong>${order.delivery_address}</strong>
+                        </div>
+                    </div>
+                    <div style="margin: 12px 0;">
+                        ${itemsHtml}
+                    </div>
+                    <div style="border-top: 1px dashed var(--color-border-subtle); padding-top: 12px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; justify-content: space-between; color: var(--color-text-muted);">
+                            <span>Subtotal:</span>
+                            <span>₹${order.subtotal}</span>
+                        </div>
+                        ${order.discount > 0 ? `<div style="display: flex; justify-content: space-between; color: #16a34a;"><span>Promo Discount:</span><span>-₹${order.discount}</span></div>` : ''}
+                        <div style="display: flex; justify-content: space-between; color: var(--color-text-muted);">
+                            <span>Taxes & Delivery:</span>
+                            <span>₹${order.tax + order.delivery_fee}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem; margin-top: 6px; color: var(--color-primary); border-top: 1px solid var(--color-border-subtle); padding-top: 8px;">
+                            <span>Total Paid (${order.payment_method}):</span>
+                            <span style="color: var(--color-secondary);">₹${order.final_total}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const pPrintReceiptBtn = document.getElementById('p-print-receipt-btn');
+        if (pPrintReceiptBtn) {
+            pPrintReceiptBtn.addEventListener('click', () => {
+                window.print();
+            });
+        }
+
+        function renderStandaloneHistory() {
+            if (!pageHistoryList) return;
+            const pastOrders = bsrDB.getOrders();
+            pageHistoryList.innerHTML = '';
+
+            if (pastOrders.length === 0) {
+                pageHistoryList.innerHTML = '<p style="color: var(--color-text-muted); text-align: center; padding: 24px;">No past orders found in local database history.</p>';
+                return;
+            }
+
+            pastOrders.forEach(order => {
+                const historyCard = document.createElement('div');
+                historyCard.className = 'checkout-card-box';
+                historyCard.style.cssText = 'margin-bottom: 16px; padding: 20px;';
+                
+                const itemsList = order.items.map(i => `${i.name} (x${i.quantity})`).join(', ');
+
+                historyCard.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <strong style="font-size: 0.95rem; color: var(--color-primary);">Order #${order.id}</strong>
+                                <span style="font-size: 0.75rem; background: var(--color-surface-soft); padding: 2px 8px; border-radius: 4px; font-weight: 700; color: var(--color-secondary); text-transform: uppercase;">${order.status}</span>
+                            </div>
+                            <p style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">${new Date(order.created_at || Date.now()).toLocaleString()}</p>
+                            <p style="font-size: 0.85rem; color: var(--color-primary); margin-top: 8px; font-weight: 500;">
+                                Items: <span style="color: var(--color-text-muted); font-weight: 400;">${itemsList}</span>
+                            </p>
+                        </div>
+                        <div style="text-align: right;">
+                            <strong style="color: var(--color-secondary); font-size: 1.15rem; display: block;">₹${order.final_total}</strong>
+                            <button class="btn btn-outline reorder-btn" data-id="${order.id}" style="padding: 6px 12px; font-size: 0.75rem; margin-top: 8px;">Reorder</button>
+                        </div>
+                    </div>
+                `;
+                
+                pageHistoryList.appendChild(historyCard);
+            });
+
+            pageHistoryList.querySelectorAll('.reorder-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const orderId = btn.dataset.id;
+                    const orderToReorder = pastOrders.find(o => o.id === orderId);
+                    if (orderToReorder) {
+                        orderToReorder.items.forEach(item => {
+                            const existing = checkoutCart.find(c => c.name === item.name);
+                            if (existing) {
+                                existing.quantity += item.quantity;
+                            } else {
+                                checkoutCart.push({ ...item });
+                            }
+                        });
+                        bsrDB.saveCart(checkoutCart);
+                        renderCheckoutCart();
+                        showToast(`🛒 Items from Order #${orderId} added to your cart!`);
+                    }
+                });
+            });
+        }
+
+        renderCheckoutCart();
+        renderStandaloneHistory();
+        
+        const historyLink = document.getElementById('nav-history-link');
+        if (historyLink) {
+            historyLink.addEventListener('click', (e) => {
+                const pastOrdersSection = document.getElementById('past-orders');
+                if (pastOrdersSection) {
+                    e.preventDefault();
+                    pastOrdersSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        }
+    }
+
+    if (document.body.classList.contains('checkout-page-body')) {
+        initStandaloneCheckoutPage();
     }
 
     // Check admin session on startup
