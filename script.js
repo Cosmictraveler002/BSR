@@ -159,11 +159,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (show) {
             reservationModal.classList.add('active');
             document.body.style.overflow = 'hidden';
-            if (lenis) lenis.stop();
+            stopSmoothScroll();
         } else {
             reservationModal.classList.remove('active');
             document.body.style.overflow = '';
-            if (lenis) lenis.start();
+            startSmoothScroll();
         }
     }
 
@@ -183,92 +183,134 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeEl) activeEl.classList.add('active');
     }
 
-    // ==========================================================================
-    // --- Lenis + GSAP ScrollTrigger Premium Smooth Scroll & Visual Reactivity ---
-    // ==========================================================================
-    let lenis = null;
+    // Global Smooth Scroll Controls (Locomotive Scroll Engine)
+    let locoScroll = null;
 
-    if (typeof Lenis !== 'undefined') {
-        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
-
-        if (!isTouchDevice) {
-            // Apple-like Weighted Physics Setup:
-            // lerp: 0.08 & wheelMultiplier: 1.2 for controlled inertia without floaty "slipping on ice" feel
-            lenis = new Lenis({
-                duration: 1.2,
-                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // easeOutExpo decay curve
-                lerp: 0.08,
-                wheelMultiplier: 1.2,
-                touchMultiplier: 1.0,
-                smoothWheel: true,
-                smoothTouch: false, // Explicitly disabled on touch devices to maintain native accessibility
-                syncTouch: false
-            });
-
-            // GSAP ScrollTrigger Synchronization via rAF Ticker
-            if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
-                gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
-
-                // Synchronize GSAP ScrollTrigger on every Lenis scroll tick
-                lenis.on('scroll', ScrollTrigger.update);
-
-                // Drive Lenis scroll engine using GSAP's 60fps ticker
-                gsap.ticker.add((time) => {
-                    if (lenis) lenis.raf(time * 1000);
-                });
-
-                // Prevent lag smoothing delays for 1:1 frame responsiveness
-                gsap.ticker.lagSmoothing(0);
-            } else {
-                function raf(time) {
-                    if (lenis) lenis.raf(time);
-                    requestAnimationFrame(raf);
-                }
-                requestAnimationFrame(raf);
-            }
+    function stopSmoothScroll() {
+        if (locoScroll) {
+            try { locoScroll.stop(); } catch (e) {}
         }
+    }
 
-        // Connect anchor links through Lenis physics engine (with fallback to native smooth scroll)
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                const targetId = this.getAttribute('href');
-                if (targetId && targetId !== '#' && targetId.length > 1) {
-                    const targetEl = document.querySelector(targetId);
-                    if (targetEl) {
-                        e.preventDefault();
-                        if (lenis) {
-                            lenis.scrollTo(targetEl, { offset: -70, duration: 1.2 });
-                        } else {
-                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                    }
-                }
-            });
+    function startSmoothScroll() {
+        if (locoScroll) {
+            try { locoScroll.start(); } catch (e) {}
+        }
+    }
+
+    function scrollToElement(target, offset = -70, duration = 1000) {
+        if (locoScroll) {
+            try {
+                locoScroll.scrollTo(target, { offset: offset, duration: duration });
+                return;
+            } catch (e) {}
+        }
+        if (typeof target === 'string') {
+            const el = document.querySelector(target);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        } else if (target && target.scrollIntoView) {
+            target.scrollIntoView({ behavior: 'smooth' });
+        } else if (target === 0) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    // ==========================================================================
+    // --- Locomotive Scroll + GSAP ScrollTrigger Premium Smooth Scroll & Visual Reactivity ---
+    // ==========================================================================
+    const scrollContainer = document.querySelector('[data-scroll-container]');
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
+
+    if (typeof LocomotiveScroll !== 'undefined' && scrollContainer) {
+        locoScroll = new LocomotiveScroll({
+            el: scrollContainer,
+            smooth: !isTouchDevice,
+            smoothMobile: false,
+            multiplier: 1.0,
+            lerp: 0.08,
+            getDirection: true,
+            getSpeed: true
         });
 
-        // ----------------------------------------------------------------------
-        // Visual Reactivity Animations (Hardware-Accelerated: transform & opacity)
-        // ----------------------------------------------------------------------
-        if (!isTouchDevice && typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
-            // 1. Subtle Text Reveal: Text block fades in and slides up (y: 30px -> 0px) as it enters viewport
-            gsap.utils.toArray('.gsap-text-reveal, .story-title, .menu-title, .contact-title, .feature-title, .section-label').forEach(textEl => {
-                gsap.fromTo(textEl,
-                    { opacity: 0, y: 30 },
+        if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+            gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+            locoScroll.on("scroll", ScrollTrigger.update);
+
+            ScrollTrigger.scrollerProxy(scrollContainer, {
+                scrollTop(value) {
+                    return arguments.length
+                        ? locoScroll.scrollTo(value, { duration: 0, disableLerp: true })
+                        : locoScroll.scroll.instance.scroll.y;
+                },
+                getBoundingClientRect() {
+                    return { top: 0, left: 0, width: window.innerWidth, height: window.innerHeight };
+                },
+                pinType: scrollContainer.style.transform ? "transform" : "fixed"
+            });
+
+            ScrollTrigger.addEventListener("refresh", () => locoScroll.update());
+            ScrollTrigger.refresh();
+
+            // 1. Heading Parallax & Text Opacity Interpolation (Responsive Y-Movement)
+            gsap.utils.toArray('.gsap-heading-parallax, .story-title, .menu-title, .contact-title, .feature-title, .section-label, .heritage-header h2, .specials-header h2, .celebrate-header h2, .contact-header h2').forEach(headingEl => {
+                gsap.fromTo(headingEl,
+                    { opacity: 0.15, y: 40 },
                     {
                         opacity: 1,
-                        y: 0,
-                        duration: 0.9,
+                        y: -15,
                         ease: "power2.out",
                         scrollTrigger: {
-                            trigger: textEl,
-                            start: "top 88%",
-                            toggleActions: "play none none reverse"
+                            trigger: headingEl,
+                            scroller: scrollContainer,
+                            start: "top 92%",
+                            end: "bottom 20%",
+                            scrub: 0.8
                         }
                     }
                 );
             });
 
-            // 2. Subtle Parallax: Image moves slightly slower than scroll speed for premium depth
+            // 2. Body Text Parallax & Smooth Opacity Fade (Differential Y-Movement)
+            gsap.utils.toArray('.gsap-body-parallax, .story-text p, .hero-description, .contact-desc, .section-subtitle, .feature-card p, .dish-desc').forEach(bodyEl => {
+                gsap.fromTo(bodyEl,
+                    { opacity: 0.2, y: 50 },
+                    {
+                        opacity: 1,
+                        y: -10,
+                        ease: "power1.out",
+                        scrollTrigger: {
+                            trigger: bodyEl,
+                            scroller: scrollContainer,
+                            start: "top 90%",
+                            end: "bottom 25%",
+                            scrub: 1.0
+                        }
+                    }
+                );
+            });
+
+            // 3. Hero Section Title & Subtitle Responsive Parallax Scrub
+            const heroTextContainer = document.querySelector('.hero-content, .hero-text-content');
+            if (heroTextContainer) {
+                gsap.fromTo(heroTextContainer,
+                    { yPercent: 0, opacity: 1 },
+                    {
+                        yPercent: -25,
+                        opacity: 0.3,
+                        ease: "none",
+                        scrollTrigger: {
+                            trigger: "#hero",
+                            scroller: scrollContainer,
+                            start: "top top",
+                            end: "bottom 30%",
+                            scrub: true
+                        }
+                    }
+                );
+            }
+
+            // 4. Image Parallax Animations
             gsap.utils.toArray('.gsap-parallax-img, .story-image-frame img, .hero-image-card img').forEach(imgEl => {
                 const parentWrap = imgEl.closest('.gsap-parallax-wrap, .story-image-frame, .hero-image-card') || imgEl.parentElement;
                 gsap.fromTo(imgEl,
@@ -278,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ease: "none",
                         scrollTrigger: {
                             trigger: parentWrap,
+                            scroller: scrollContainer,
                             start: "top bottom",
                             end: "bottom top",
                             scrub: true
@@ -286,6 +329,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
             });
         }
+
+        // Connect anchor links through Locomotive Scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const targetId = this.getAttribute('href');
+                if (targetId && targetId !== '#' && targetId.length > 1) {
+                    const targetEl = document.querySelector(targetId);
+                    if (targetEl) {
+                        e.preventDefault();
+                        scrollToElement(targetEl, -70, 1000);
+                    }
+                }
+            });
+        });
     }
 
     function handleMnavHome(e) {
@@ -293,11 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navigator.vibrate) navigator.vibrate(15);
         if (mnavHome) mnavHome.blur();
         setActiveMobileNavItem(mnavHome);
-        if (lenis) {
-            lenis.scrollTo(0, { duration: 1.0 });
-        } else {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        scrollToElement(0, 0, 1000);
     }
 
     function handleMnavMenu(e) {
@@ -307,11 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setActiveMobileNavItem(mnavMenu);
         const menuSection = document.getElementById('menu');
         if (menuSection) {
-            if (lenis) {
-                lenis.scrollTo(menuSection, { offset: -70, duration: 1.1 });
-            } else {
-                menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            scrollToElement(menuSection, -70, 1000);
         } else {
             window.location.hash = 'menu';
         }
@@ -563,11 +612,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (show) {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
-            if (lenis) lenis.stop();
+            stopSmoothScroll();
         } else {
             modal.classList.remove('active');
             document.body.style.overflow = '';
-            if (lenis) lenis.start();
+            startSmoothScroll();
         }
     }
 
@@ -745,11 +794,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (show) {
             cartDrawer.classList.add('active');
             document.body.style.overflow = 'hidden';
-            if (lenis) lenis.stop();
+            stopSmoothScroll();
         } else {
             cartDrawer.classList.remove('active');
             document.body.style.overflow = '';
-            if (lenis) lenis.start();
+            startSmoothScroll();
         }
     }
 
@@ -971,14 +1020,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCheckoutSummary();
         checkoutModal.classList.add('active');
         document.body.style.overflow = 'hidden';
-        if (lenis) lenis.stop();
+        stopSmoothScroll();
     }
 
     function closeCheckoutModal() {
         if (checkoutModal) {
             checkoutModal.classList.remove('active');
             document.body.style.overflow = '';
-            if (lenis) lenis.start();
+            startSmoothScroll();
         }
     }
 
@@ -1101,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (receiptModal) {
                 receiptModal.classList.add('active');
                 document.body.style.overflow = 'hidden';
-                if (lenis) lenis.stop();
+                stopSmoothScroll();
             }
 
             showToast(`🎉 Your order ${createdOrder.id} has been confirmed!`);
@@ -1157,7 +1206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (receiptModal) {
             receiptModal.classList.remove('active');
             document.body.style.overflow = '';
-            if (lenis) lenis.start();
+            startSmoothScroll();
         }
     }
 
@@ -1256,14 +1305,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         historyModal.classList.add('active');
         document.body.style.overflow = 'hidden';
-        if (lenis) lenis.stop();
+        stopSmoothScroll();
     }
 
     if (ordersHistoryBtn) ordersHistoryBtn.addEventListener('click', openHistoryModal);
     if (closeHistoryBtn) closeHistoryBtn.addEventListener('click', () => {
         historyModal.classList.remove('active');
         document.body.style.overflow = '';
-        if (lenis) lenis.start();
+        startSmoothScroll();
     });
 
     // --- Category Filters for Dishes ---
@@ -1640,6 +1689,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let cachedIsMobile = cachedVw <= 768;
         let cachedScrollY = window.scrollY;
 
+        // ── Touch Activation & Inactivity State (Mobile View) ──
+        let mobileTouchActive = false;
+        let mobileInactivityTimer = null;
+        let currentMobileOpacity = 0;
+        const MOBILE_INACTIVITY_DELAY = 3500; // 3.5s inactivity before smooth fade-out
+
         window.addEventListener('resize', debounce(() => {
             cachedVw = window.innerWidth;
             cachedVh = window.innerHeight;
@@ -1658,22 +1713,35 @@ document.addEventListener('DOMContentLoaded', () => {
             lastMoveTime = Date.now();
         }
 
+        function handleMobileTouch(clientX, clientY) {
+            updatePointer(clientX, clientY);
+            if (cachedIsMobile) {
+                mobileTouchActive = true;
+                if (mobileInactivityTimer) {
+                    clearTimeout(mobileInactivityTimer);
+                }
+                mobileInactivityTimer = setTimeout(() => {
+                    mobileTouchActive = false;
+                }, MOBILE_INACTIVITY_DELAY);
+            }
+        }
+
         hero.addEventListener('mousemove', (e) => updatePointer(e.clientX, e.clientY));
         hero.addEventListener('touchstart', (e) => {
             if (e.touches && e.touches.length > 0) {
-                updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+                handleMobileTouch(e.touches[0].clientX, e.touches[0].clientY);
             }
         }, { passive: true });
         hero.addEventListener('touchmove', (e) => {
             if (e.touches && e.touches.length > 0) {
-                updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+                handleMobileTouch(e.touches[0].clientX, e.touches[0].clientY);
             }
         }, { passive: true });
 
         // ── Spotlight Base Radius Math ──
         function calcRadius(cx, cy, vw, vh) {
             if (cachedIsMobile) {
-                return Math.min(vw, vh) * 0.19;
+                return Math.min(vw, vh) * 0.22;
             }
             const dist = Math.sqrt(cx * cx + cy * cy);
             const maxDist = Math.sqrt(vw * vw + vh * vh);
@@ -1684,36 +1752,64 @@ document.addEventListener('DOMContentLoaded', () => {
             return minR + t * (maxR - minR);
         }
 
-        // ── Fluid Polygon Math (Desktop Blob) ──
+        // ── Fluid Organic Quadratic Bezier Blob Math (Silky Smooth Edge Curvature) ──
         let _heroFrameCounter = 0;
         function getBlobPath(cx, cy, r, t) {
-            const numPoints = cachedIsMobile ? 20 : 120;
-            let d = "";
-            const varianceMult = cachedIsMobile ? 0.05 : 0.09;
-            const timeSpeed = cachedIsMobile ? 0.6 : 1.0;
+            const numPoints = cachedIsMobile ? 24 : 48;
+            const varianceMult = cachedIsMobile ? 0.06 : 0.08;
+            const timeSpeed = cachedIsMobile ? 0.7 : 0.9;
             const TWO_PI = Math.PI * 2;
 
-            for (let i = 0; i <= numPoints; i++) {
+            const pts = [];
+            for (let i = 0; i < numPoints; i++) {
                 let theta = (i / numPoints) * TWO_PI;
 
                 let radiusVariance = r * varianceMult;
-                let wave1 = Math.sin(theta * 4 + t * 1.2 * timeSpeed) * radiusVariance;
-                let wave2 = Math.cos(theta * 3 - t * 0.8 * timeSpeed) * (radiusVariance * 0.7);
-                let wave3 = Math.sin(theta * 6 + t * 1.5 * timeSpeed) * (radiusVariance * 0.5);
+                let wave1 = Math.sin(theta * 3 + t * 1.5 * timeSpeed) * radiusVariance;
+                let wave2 = Math.cos(theta * 2 - t * 1.1 * timeSpeed) * (radiusVariance * 0.5);
+                let wave3 = Math.sin(theta * 4 + t * 1.8 * timeSpeed) * (radiusVariance * 0.3);
 
                 let currentR = r + wave1 + wave2 + wave3;
 
-                let x = cx + currentR * Math.cos(theta);
-                let y = cy + currentR * Math.sin(theta);
-
-                if (i === 0) {
-                    d += `M ${x.toFixed(2)} ${y.toFixed(2)} `;
-                } else {
-                    d += `L ${x.toFixed(2)} ${y.toFixed(2)} `;
-                }
+                pts.push({
+                    x: cx + currentR * Math.cos(theta),
+                    y: cy + currentR * Math.sin(theta)
+                });
             }
+
+            const len = pts.length;
+            let p0 = pts[len - 1];
+            let p1 = pts[0];
+            let midX = ((p0.x + p1.x) / 2).toFixed(1);
+            let midY = ((p0.y + p1.y) / 2).toFixed(1);
+
+            let d = `M ${midX} ${midY} `;
+
+            for (let i = 0; i < len; i++) {
+                p1 = pts[i];
+                let p2 = pts[(i + 1) % len];
+                let nextMidX = ((p1.x + p2.x) / 2).toFixed(1);
+                let nextMidY = ((p1.y + p2.y) / 2).toFixed(1);
+
+                d += `Q ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} ${nextMidX} ${nextMidY} `;
+            }
+
             d += "Z";
             return d;
+        }
+
+        // ── Random Corner & Edge Origin Coordinates for Mobile Wave Expansion ──
+        function getRandomOriginPoint(vw, vh) {
+            const origins = [
+                { x: vw * 0.08, y: vh * 0.12 }, // Top-Left Corner
+                { x: vw * 0.92, y: vh * 0.12 }, // Top-Right Corner
+                { x: vw * 0.08, y: vh * 0.82 }, // Bottom-Left Corner
+                { x: vw * 0.92, y: vh * 0.82 }, // Bottom-Right Corner
+                { x: vw * 0.04, y: vh * 0.48 }, // Middle-Left Edge
+                { x: vw * 0.96, y: vh * 0.48 }  // Middle-Right Edge
+            ];
+            const randomIndex = Math.floor(Math.random() * origins.length);
+            return origins[randomIndex];
         }
 
         // ── Cycle Trigger ──
@@ -1725,20 +1821,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const maxImages = cachedIsMobile ? 3 : images.length;
             spotIndex = (spotIndex + 1) % maxImages;
 
-            cloneImg.style.backgroundImage = images[expandingIndex].style.backgroundImage;
-            if (!cachedIsMobile) {
-                // Setup Clone Layer over current spotlight geometry on desktop
-                let initialPath = getBlobPath(currentX, currentY, Math.max(1, currentRadius), time);
-                cloneLayer.style.clipPath = `path("${initialPath}")`;
-                cloneLayer.style.webkitClipPath = `path("${initialPath}")`;
-                cloneLayer.style.opacity = '1';
-            } else {
-                // Setup Clone Layer using GPU primitive circle on mobile
-                let initialCircle = `circle(${Math.round(Math.max(1, currentRadius))}px at ${Math.round(currentX)}px ${Math.round(currentY)}px)`;
-                cloneLayer.style.clipPath = initialCircle;
-                cloneLayer.style.webkitClipPath = initialCircle;
-                cloneLayer.style.opacity = '1';
+            let originX = currentX;
+            let originY = currentY;
+            let startR = currentRadius;
+
+            if (cachedIsMobile && !mobileTouchActive) {
+                const randomOrigin = getRandomOriginPoint(cachedVw, cachedVh);
+                originX = randomOrigin.x;
+                originY = randomOrigin.y;
+                startR = 15;
             }
+
+            cloneImg.style.backgroundImage = images[expandingIndex].style.backgroundImage;
+            let initialPath = getBlobPath(originX, originY, Math.max(1, startR), time);
+            cloneLayer.style.clipPath = `path("${initialPath}")`;
+            cloneLayer.style.webkitClipPath = `path("${initialPath}")`;
+            cloneLayer.style.opacity = '1';
 
             // Update Spotlight to NEXT image & Background to the EXPANDING image
             images[expandingIndex].classList.remove('active');
@@ -1747,10 +1845,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             wave.active = true;
             wave.progress = 0;
-            wave.x = currentX;
-            wave.y = currentY;
-            wave.startR = currentRadius;
-            wave.maxR = Math.sqrt(cachedVw ** 2 + cachedVh ** 2) * 1.2;
+            wave.x = originX;
+            wave.y = originY;
+            wave.startR = startR;
+            wave.maxR = Math.sqrt(cachedVw ** 2 + cachedVh ** 2) * 1.35;
 
             // RESET current tracking spotlight to scale 0 so it grows back seamlessly
             currentRadius = 0;
@@ -1777,8 +1875,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         heroObserver.observe(hero);
 
-        // ── Animation Loop (Frame Rate Independent & Viewport Throttled) ──
-        const _HERO_FPS_INTERVAL = IS_MOBILE ? 33 : 16; // 30fps on mobile, 60fps on desktop
+        // ── Animation Loop (60fps Native Refresh Rate for Silky Smooth Organic Motion) ──
+        const _HERO_FPS_INTERVAL = 16;
         function animate(currentTime) {
             if (!isHeroVisible) {
                 heroRafId = null;
@@ -1788,7 +1886,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentTime) currentTime = performance.now();
             let deltaTime = currentTime - lastFrameTime;
 
-            // Throttle to target FPS on mobile to reduce CPU load
             if (deltaTime < _HERO_FPS_INTERVAL) {
                 heroRafId = requestAnimationFrame(animate);
                 return;
@@ -1802,15 +1899,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const vw = cachedVw;
             const vh = cachedVh;
 
+            // Smooth opacity interpolation for mobile touch activation & 3.5s inactivity fade-out
+            const targetMobileOpacity = mobile ? (mobileTouchActive ? 1.0 : 0.0) : 1.0;
+            currentMobileOpacity += (targetMobileOpacity - currentMobileOpacity) * 0.06;
+
             // Fast & responsive time progression
-            time += ((mobile ? 0.0025 : 0.004) * deltaTime);
+            time += ((mobile ? 0.003 : 0.004) * deltaTime);
 
             // Target coordinates: centered by default on mobile if untouched
             const targetX = mobile ? (lastMoveTime && (Date.now() - lastMoveTime < 3000) ? mouseX : vw * 0.5) : mouseX;
             const targetY = mobile ? (lastMoveTime && (Date.now() - lastMoveTime < 3000) ? mouseY : vh * 0.42) : mouseY;
 
-            // Highly responsive lerp (0.35 on mobile vs 0.55 on desktop)
-            const lerpSpeed = mobile ? 0.35 : 0.55;
+            // Smooth fluid lerp (0.18 on mobile vs 0.55 on desktop)
+            const lerpSpeed = mobile ? 0.18 : 0.55;
             currentX += (targetX - currentX) * lerpSpeed;
             currentY += (targetY - currentY) * lerpSpeed;
 
@@ -1819,8 +1920,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             heroText.style.opacity = Math.max(0.2, shrinkFactor);
 
-            // Cycle interval: 3800ms on mobile vs 2800ms desktop
-            const cycleInterval = mobile ? 3800 : 2800;
+            // Cycle interval: 4800ms on mobile vs 2800ms desktop
+            const cycleInterval = mobile ? 4800 : 2800;
             cycleAccumulator += deltaTime;
             if (cycleAccumulator >= cycleInterval) {
                 if (cycleImage()) {
@@ -1828,8 +1929,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Snappy spotlight growth rate: 600ms on mobile vs 400ms desktop
-            const growthTime = mobile ? 600 : 400;
+            // Slower, luxurious spotlight growth rate: 1600ms on mobile vs 400ms desktop
+            const growthTime = mobile ? 1600 : 400;
             if (spotlightGrowth < 1) {
                 spotlightGrowth += (deltaTime / growthTime);
                 if (spotlightGrowth > 1) spotlightGrowth = 1;
@@ -1838,33 +1939,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // Cubic ease-out curve for responsive blob regrowth
             let growthEase = 1 - Math.pow(1 - spotlightGrowth, 3);
             const baseR = calcRadius(currentX, currentY, vw, vh);
-            // Lightweight sine-wave edge pulse on mobile (+/- 4%) without SVG polygon parsing
-            const mobilePulse = mobile ? Math.sin(time * 2.5) * (baseR * 0.04) : 0;
-            const targetR = (baseR + mobilePulse) * Math.max(0.3, shrinkFactor) * growthEase;
+            const targetR = baseR * Math.max(0.3, shrinkFactor) * growthEase;
 
-            const radiusLerp = mobile ? 0.45 : 0.6;
+            // Slower radius enlargement lerp on mobile (0.15) for smooth unhurried expansion
+            const radiusLerp = mobile ? 0.15 : 0.6;
             currentRadius += (targetR - currentRadius) * radiusLerp;
 
-            if (currentRadius > 1) {
-                let pathCss;
-                if (mobile) {
-                    // GPU-composited primitive circle clip-path on mobile (Zero repaint overhead)
-                    pathCss = `circle(${Math.round(currentRadius)}px at ${Math.round(currentX)}px ${Math.round(currentY)}px)`;
-                } else {
-                    const spotlightPath = getBlobPath(currentX, currentY, currentRadius, time);
-                    pathCss = `path("${spotlightPath}")`;
-                }
+            if (currentRadius > 1 && currentMobileOpacity > 0.01) {
+                const spotlightPath = getBlobPath(currentX, currentY, currentRadius, time);
+                const pathCss = `path("${spotlightPath}")`;
 
                 revealLayer.style.clipPath = pathCss;
                 revealLayer.style.webkitClipPath = pathCss;
-                revealLayer.style.opacity = '1';
+                revealLayer.style.opacity = (Math.min(1.0, currentMobileOpacity)).toFixed(3);
             } else {
                 revealLayer.style.opacity = '0';
             }
 
-            // Wave Expansion (GPU Circle on Mobile, SVG Blob on Desktop)
+            // Wave Expansion (Organic Fluid SVG Blob on Desktop & Mobile with 3800ms Slower Mobile Wave)
             if (wave.active) {
-                const waveDuration = mobile ? 2200 : 2700;
+                const waveDuration = mobile ? 3800 : 2700;
                 wave.progress += (deltaTime / waveDuration);
 
                 if (wave.progress >= 1) {
@@ -1876,22 +1970,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     let easeOut = 1 - Math.pow(1 - t, 3);
                     wave.currentR = wave.startR + easeOut * (wave.maxR - wave.startR);
 
-                    if (mobile) {
-                        const pathCss = `circle(${Math.round(wave.currentR)}px at ${Math.round(wave.x)}px ${Math.round(wave.y)}px)`;
-                        cloneLayer.style.clipPath = pathCss;
-                        cloneLayer.style.webkitClipPath = pathCss;
-                        cloneLayer.style.opacity = (1 - easeOut).toString();
-                    } else {
-                        let blobPathStr = getBlobPath(wave.x, wave.y, wave.currentR, time);
-                        const pathCss = `path("${blobPathStr}")`;
+                    let blobPathStr = getBlobPath(wave.x, wave.y, wave.currentR, time);
+                    const pathCss = `path("${blobPathStr}")`;
 
-                        cloneLayer.style.clipPath = pathCss;
-                        cloneLayer.style.webkitClipPath = pathCss;
-                        cloneLayer.style.opacity = (1 - easeOut).toString();
+                    cloneLayer.style.clipPath = pathCss;
+                    cloneLayer.style.webkitClipPath = pathCss;
+                    cloneLayer.style.opacity = (1 - easeOut).toFixed(3);
 
-                        blobBorder.setAttribute('d', blobPathStr);
-                        blobBorder.style.stroke = `rgba(255, 255, 255, ${0.8 * (1 - easeOut)})`;
-                    }
+                    blobBorder.setAttribute('d', blobPathStr);
+                    blobBorder.style.stroke = `rgba(255, 255, 255, ${(mobile ? 0.6 : 0.8) * (1 - easeOut)})`;
                 }
             }
 

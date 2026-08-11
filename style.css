@@ -56,31 +56,47 @@ html {
     overscroll-behavior-y: bounce;
 }
 
-/* --- Lenis Premium Smooth Scroll Engine Rules --- */
-html.lenis,
-html.lenis body {
-    height: auto;
+/* --- Locomotive Scroll Premium Smooth Scroll Engine Rules --- */
+html.has-scroll-smooth {
+    overflow: hidden;
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
 }
 
-.lenis.lenis-smooth {
-    scroll-behavior: auto !important;
+html.has-scroll-dragging {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
-.lenis.lenis-smooth [data-lenis-prevent] {
-    overscroll-behavior: contain;
-}
-
-.lenis.lenis-stopped {
+.has-scroll-smooth body {
     overflow: hidden;
 }
 
-.lenis.lenis-scrolling iframe {
-    pointer-events: none;
+.has-scroll-smooth [data-scroll-container] {
+    min-height: 100vh;
+    will-change: transform;
 }
 
 /* --- Hardware-Accelerated Animation Classes (60fps GPU pipeline) --- */
-.gsap-text-reveal {
+.gsap-text-reveal,
+.gsap-heading-parallax,
+.gsap-body-parallax,
+.story-title,
+.menu-title,
+.contact-title,
+.feature-title,
+.section-label,
+.story-text p,
+.hero-description,
+.contact-desc,
+.section-subtitle {
     will-change: transform, opacity;
+    transform: translateZ(0);
 }
 
 .gsap-parallax-wrap {

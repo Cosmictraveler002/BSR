@@ -119,6 +119,9 @@
     <link rel="preload" as="document"
         href="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d235093.06464062235!2d88.4436955!3d22.97492135!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f895dd07b910c5%3A0xb6a72fc46b725ff1!2sMeet%20Me%20Cafe%20And%20Restaurant!5e0!3m2!1sen!2sin!4v1786388961071!5m2!1sen!2sin">
 
+    <!-- Locomotive Scroll Engine CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/locomotive-scroll@4.1.4/dist/locomotive-scroll.min.css">
+
     <!-- Pure Vanilla CSS Style File -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -176,8 +179,8 @@
         </div>
     </header>
 
-    <!-- Main Web Content -->
-    <main>
+    <!-- Main Web Content with Locomotive Scroll Engine Container -->
+    <main id="main-content" data-scroll-container>
         <!-- ─── HERO SECTION (FROM HERO.HTML) ─── -->
         <section class="hero" id="hero">
 
@@ -989,6 +992,7 @@
                 </div>
             </div>
     </footer>
+    </main>
 
     <!-- Mobile Bottom Navigation Bar (Modern Website Experience) -->
     <nav class="mobile-bottom-nav" aria-label="Mobile Bottom Navigation">
@@ -1014,8 +1018,8 @@
         </a>
     </nav>
 
-    <!-- Lenis Smooth Scroll Engine (by Studio Freight / Darkroom Engineering) -->
-    <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+    <!-- Locomotive Scroll Engine (v4.1.4) -->
+    <script src="https://cdn.jsdelivr.net/npm/locomotive-scroll@4.1.4/dist/locomotive-scroll.min.js"></script>
 
     <!-- GSAP Core & Smooth Scroll Plugins -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
