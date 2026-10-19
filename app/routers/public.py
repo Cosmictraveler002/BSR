@@ -3,6 +3,7 @@ import random
 import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -490,3 +491,51 @@ def create_private_event(request: Request, event_data: PrivateEventCreate, db: S
         brand=brand,
         created_at=created_at_dt
     )
+
+
+@router.post("", include_in_schema=False)
+@router.post("/", include_in_schema=False)
+async def api_root_post_fallback(request: Request, db: Session = Depends(get_db)):
+    """
+    Defensive fallback dispatcher for POST /api and POST /api/.
+    If Vercel or an edge proxy ever strips the subpath and forwards a POST request
+    directly to /api without URL preservation, this inspects query parameters (?path=...)
+    or payload structure and routes to the correct handler, guaranteeing that 405 Method
+    Not Allowed is never returned.
+    """
+    path_param = request.query_params.get("path", "").strip().strip("/")
+    if path_param in ("orders", "orders/"):
+        body = await request.json()
+        order_in = OrderCreate(**body)
+        return create_order(request, order_in, db)
+    elif path_param in ("reservations", "reservations/"):
+        body = await request.json()
+        res_in = ReservationCreate(**body)
+        return create_reservation(request, res_in, db)
+    elif path_param in ("private-events", "private-events/", "events", "events/"):
+        body = await request.json()
+        ev_in = PrivateEventCreate(**body)
+        return create_private_event(request, ev_in, db)
+
+    # Fallback to inspecting JSON body structure
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    if isinstance(body, dict):
+        if "items" in body:
+            order_in = OrderCreate(**body)
+            return create_order(request, order_in, db)
+        elif "reservation_date" in body or "guests_count" in body:
+            res_in = ReservationCreate(**body)
+            return create_reservation(request, res_in, db)
+        elif "event_date" in body or "guest_count" in body:
+            ev_in = PrivateEventCreate(**body)
+            return create_private_event(request, ev_in, db)
+
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": "Unable to determine endpoint target for POST /api. Please POST to /api/orders, /api/reservations, or /api/private-events."}
+    )
+
