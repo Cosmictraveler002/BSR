@@ -22,46 +22,48 @@ try:
         async def __call__(self, scope, receive, send):
             if scope["type"] == "http":
                 headers = dict(scope.get("headers", []))
-                
-                # Check headers for original requested path
                 original_path = None
-                
-                # Try x-vercel-forwarded-path (Vercel standard for original path)
-                if b"x-vercel-forwarded-path" in headers:
-                    original_path = headers[b"x-vercel-forwarded-path"].decode("utf-8")
-                # Try x-forwarded-path
-                elif b"x-forwarded-path" in headers:
-                    original_path = headers[b"x-forwarded-path"].decode("utf-8")
-                # Try x-matched-path
-                elif b"x-matched-path" in headers:
-                    original_path = headers[b"x-matched-path"].decode("utf-8")
-                # Try extracting path from x-forwarded-url
-                elif b"x-forwarded-url" in headers:
-                    url_str = headers[b"x-forwarded-url"].decode("utf-8")
-                    original_path = urlparse(url_str).path
-                # Try extracting from x-original-url
-                elif b"x-original-url" in headers:
-                    url_str = headers[b"x-original-url"].decode("utf-8")
-                    original_path = urlparse(url_str).path
-                
+
+                # 1. First priority: Check query parameter mapped by Vercel rewrites (?path=...)
+                query_string = scope.get("query_string", b"").decode("utf-8")
+                if "path=" in query_string:
+                    from urllib.parse import parse_qs, urlencode
+                    params = parse_qs(query_string)
+                    if "path" in params and params["path"]:
+                        val = params["path"][0]
+                        if val:
+                            if val == "reserve" or val.startswith("reserve/"):
+                                original_path = f"/{val.lstrip('/')}"
+                            else:
+                                original_path = f"/api/{val.lstrip('/')}"
+                        # Strip internal routing 'path' parameter from query string so endpoints stay clean
+                        remaining_params = {k: v for k, v in params.items() if k != "path"}
+                        scope["query_string"] = urlencode(remaining_params, doseq=True).encode("utf-8")
+
+                # 2. Second priority: Check Vercel forwarded headers (ignore generic '/api')
+                if not original_path:
+                    for h in [b"x-vercel-forwarded-path", b"x-forwarded-path", b"x-forwarded-uri", b"x-original-uri"]:
+                        if h in headers:
+                            v = headers[h].decode("utf-8")
+                            if v and v != "/api" and v != "/api/":
+                                original_path = v
+                                break
+
+                # 3. Third priority: Check full forwarded URLs
+                if not original_path:
+                    for h in [b"x-forwarded-url", b"x-original-url"]:
+                        if h in headers:
+                            url_str = headers[h].decode("utf-8")
+                            v = urlparse(url_str).path
+                            if v and v != "/api" and v != "/api/":
+                                original_path = v
+                                break
+
                 if original_path:
                     clean_path = original_path.split("?")[0]
-                    # Update ASGI scope path to the original path so FastAPI router can match it
                     scope["path"] = clean_path
                     scope["raw_path"] = clean_path.encode("utf-8")
                     print(f"[debug-routing] Overrode ASGI scope path to: {scope['path']}")
-                else:
-                    # Fallback to query params if Vercel mapped path parameters
-                    query_string = scope.get("query_string", b"").decode("utf-8")
-                    if "path=" in query_string:
-                        # Extract the path parameter from query parameters
-                        from urllib.parse import parse_qs
-                        params = parse_qs(query_string)
-                        if "path" in params and params["path"]:
-                            # Reconstruct path as /api/ + path
-                            val = params["path"][0]
-                            scope["path"] = f"/api/{val.lstrip('/')}"
-                            print(f"[debug-routing] Fallback query param path override to: {scope['path']}")
                     
             await self.app(scope, receive, send)
 
