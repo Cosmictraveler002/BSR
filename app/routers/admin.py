@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import (
     verify_password, get_password_hash, create_access_token,
-    generate_csrf_token, verify_csrf_token, log_audit, get_client_ip, get_current_admin, require_roles
+    generate_csrf_token, verify_csrf_token, log_audit, get_client_ip, get_current_admin, require_roles, enforce_outlet_rls
 )
 from app.core.db_sync import bump_db_revision, get_db_revision, attach_db_revision_headers
 from app.database import get_db
@@ -26,28 +26,34 @@ from app.schemas import (
     ChangePassword, AuditLogOut, BatchDeleteSchema
 )
 
+from app.core.limiter import limiter
+
 router = APIRouter(prefix="/api/admin", tags=["Admin Protected API"])
 
-# In-memory simple rate limiting tracker for login attempts
+# In-memory rate limiting tracker for failed login attempts
 LOGIN_ATTEMPTS = {}
-MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_TIME_SECONDS = 300  # 5 minutes lockout
+
+def reset_login_rate_limits():
+    """Resets all login rate limiting attempt records (used in unit tests)."""
+    LOGIN_ATTEMPTS.clear()
 
 def check_rate_limit(ip_address: str):
-    """Enforces rate limiting on login endpoint per IP address (bypasses localhost for development)."""
-    if ip_address in ("127.0.0.1", "::1", "localhost"):
-        return
-
+    """Enforces rate limiting on login endpoint per IP address."""
     now = datetime.datetime.utcnow()
-    cutoff = now - datetime.timedelta(seconds=LOCKOUT_TIME_SECONDS)
+    cutoff = now - datetime.timedelta(seconds=settings.LOGIN_LOCKOUT_SECONDS)
     
     attempts = [t for t in LOGIN_ATTEMPTS.get(ip_address, []) if t > cutoff]
     LOGIN_ATTEMPTS[ip_address] = attempts
 
-    if len(attempts) >= MAX_LOGIN_ATTEMPTS:
+    if len(attempts) >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
+        oldest_attempt = min(attempts)
+        seconds_left = int((oldest_attempt + datetime.timedelta(seconds=settings.LOGIN_LOCKOUT_SECONDS) - now).total_seconds())
+        seconds_left = max(1, seconds_left)
+        headers = {"Retry-After": str(seconds_left)}
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many failed login attempts. Please wait 5 minutes before trying again."
+            detail=f"Too many failed login attempts. Please wait {seconds_left} seconds before trying again.",
+            headers=headers
         )
 
 def record_failed_attempt(ip_address: str):
@@ -57,11 +63,13 @@ def record_failed_attempt(ip_address: str):
     LOGIN_ATTEMPTS[ip_address].append(datetime.datetime.utcnow())
 
 @router.post("/login", response_model=TokenOut)
+@limiter.limit(settings.ADMIN_LOGIN_RATE_LIMIT)
 def admin_login(payload: AdminLogin, request: Request, response: Response, db: Session = Depends(get_db)):
     """
     Authenticates admin user, sets HttpOnly secure session cookie, and generates CSRF token.
-    Rate-limited to 5 failed attempts per 5 minutes.
+    Rate-limited per IP address and failed attempt count.
     """
+
     ip = get_client_ip(request)
     check_rate_limit(ip)
 
@@ -240,16 +248,51 @@ def _parse_datetime(val):
             pass
     return datetime.datetime.utcnow()
 
+def normalize_outlet_code(raw: Optional[str]) -> str:
+    if not raw:
+        return "KL01"
+    clean = raw.strip().upper()
+    mapping = {
+        "OUTLET-01": "KL01", "OUTLET-02": "KL02", "OUTLET-03": "KL03",
+        "KL01": "KL01", "KL02": "KL02", "KL03": "KL03",
+        "MM01": "MM01", "OUTLET-MM01": "MM01", "MM-01": "MM01"
+    }
+    return mapping.get(clean, clean)
+
+def get_outlet_search_variants(outlet_code: Optional[str]) -> List[str]:
+    """Returns both standard and legacy forms (e.g. ['KL01', 'OUTLET-01'], ['MM01', 'OUTLET-MM01'])."""
+    if not outlet_code or outlet_code == "ALL":
+        return []
+    code = normalize_outlet_code(outlet_code)
+    reverse_map = {
+        "KL01": "OUTLET-01",
+        "KL02": "OUTLET-02",
+        "KL03": "OUTLET-03",
+        "MM01": "OUTLET-MM01"
+    }
+    variants = [code]
+    if code in reverse_map:
+        variants.append(reverse_map[code])
+    return variants
+
 @router.get("/orders", response_model=List[OrderOut])
 def get_admin_orders(
     search: Optional[str] = None,
     status_filter: Optional[str] = None,
     type_filter: Optional[str] = None,
     outlet_filter: Optional[str] = None,
+    brand_filter: Optional[str] = None,
     current_admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Fetches orders from database/Firestore with search query and status/type/outlet filtering."""
+    """Fetches orders from database/Firestore with search query and status/type/outlet/brand filtering."""
+    admin_role = getattr(current_admin, "role", "Staff") or "Staff"
+    admin_outlet = getattr(current_admin, "outlet_id", "KL01") or "KL01"
+    if admin_role not in ("Super Admin", "Super Manager"):
+        outlet_filter = admin_outlet
+
+    outlet_variants = get_outlet_search_variants(outlet_filter)
+
     if settings.IS_VERCEL:
         raw_docs = query_documents("orders", limit=200)
         filtered = []
@@ -258,8 +301,20 @@ def get_admin_orders(
                 continue
             if type_filter and type_filter != "ALL" and o.get("order_type") != type_filter:
                 continue
-            if outlet_filter and outlet_filter != "ALL" and o.get("outlet_id") != outlet_filter:
-                continue
+            if outlet_variants:
+                o_outlet = o.get("outlet_id", "KL01")
+                if o_outlet not in outlet_variants and normalize_outlet_code(o_outlet) not in outlet_variants:
+                    continue
+
+            # Brand filtering
+            if brand_filter and brand_filter.lower() != "all":
+                b_target = brand_filter.lower()
+                is_cafe = (o.get("brand") == "cafe") or str(o.get("id", "")).startswith("MM-")
+                if b_target == "cafe" and not is_cafe:
+                    continue
+                if b_target == "restaurant" and is_cafe:
+                    continue
+
             if search:
                 s_lower = search.strip().lower()
                 c_name = o.get("customer_name", "").lower()
@@ -269,9 +324,11 @@ def get_admin_orders(
                     continue
 
             items = [OrderItemSchema(**i) for i in json.loads(o.get("items_json", "[]"))]
+            o_id = o["id"]
+            o_brand = o.get("brand", "cafe" if str(o_id).startswith("MM-") else "restaurant")
             filtered.append(
                 OrderOut(
-                    id=o["id"],
+                    id=o_id,
                     customer_name=o.get("customer_name", ""),
                     customer_phone=o.get("customer_phone", ""),
                     order_type=o.get("order_type", "Delivery"),
@@ -283,7 +340,8 @@ def get_admin_orders(
                     coupon_code=o.get("coupon_code"),
                     total=o.get("total", 0.0),
                     status=o.get("status", "Confirmed"),
-                    outlet_id=o.get("outlet_id", "OUTLET-01"),
+                    outlet_id=normalize_outlet_code(o.get("outlet_id", "KL01")),
+                    brand=o_brand,
                     created_at=_parse_datetime(o.get("created_at"))
                 )
             )
@@ -295,8 +353,13 @@ def get_admin_orders(
         query = query.filter(Order.status == status_filter)
     if type_filter and type_filter != "ALL":
         query = query.filter(Order.order_type == type_filter)
-    if outlet_filter and outlet_filter != "ALL":
-        query = query.filter(Order.outlet_id == outlet_filter)
+    if outlet_variants:
+        query = query.filter(Order.outlet_id.in_(outlet_variants))
+    if brand_filter and brand_filter.lower() != "all":
+        if brand_filter.lower() == "cafe":
+            query = query.filter((Order.brand == "cafe") | (Order.id.like("MM-%")))
+        elif brand_filter.lower() == "restaurant":
+            query = query.filter((Order.brand != "cafe") & (~Order.id.like("MM-%")))
     if search:
         search_term = f"%{search.strip().lower()}%"
         query = query.filter(
@@ -309,6 +372,7 @@ def get_admin_orders(
     result = []
     for o in orders:
         items = [OrderItemSchema(**i) for i in json.loads(o.items_json)]
+        o_brand = getattr(o, "brand", None) or ("cafe" if str(o.id).startswith("MM-") else "restaurant")
         result.append(
             OrderOut(
                 id=o.id,
@@ -323,7 +387,8 @@ def get_admin_orders(
                 coupon_code=o.coupon_code,
                 total=o.total,
                 status=o.status,
-                outlet_id=o.outlet_id or "OUTLET-01",
+                outlet_id=normalize_outlet_code(o.outlet_id or "KL01"),
+                brand=o_brand,
                 created_at=o.created_at
             )
         )
@@ -338,7 +403,19 @@ def update_order_status(
     db: Session = Depends(get_db)
 ):
     """Updates order status in database and logs audit event."""
+    target_outlet = None
+    fs_doc = get_document("orders", order_id)
+    if fs_doc:
+        target_outlet = fs_doc.get("outlet_id")
+    elif not settings.IS_VERCEL:
+        existing = db.query(Order).filter(Order.id == order_id).first()
+        if existing:
+            target_outlet = existing.outlet_id
+
+    enforce_outlet_rls(current_admin, target_outlet)
+
     update_document("orders", order_id, {"status": payload.status})
+
     bump_db_revision()
 
     ip = get_client_ip(request)
@@ -414,20 +491,42 @@ def delete_order(
 @router.delete("/orders", dependencies=[Depends(verify_csrf_token)])
 def wipe_all_orders(
     request: Request,
+    brand_filter: Optional[str] = None,
     current_admin: AdminUser = Depends(require_roles(["Super Admin"])),
     db: Session = Depends(get_db)
 ):
-    """Wipes all orders from database (Super Admin only)."""
-    count = wipe_collection("orders")
+    """Wipes orders from database with brand scoping (Super Admin only)."""
+    count = 0
+    b_target = (brand_filter or "").strip().lower()
+
+    if b_target in ("cafe", "restaurant"):
+        if settings.IS_VERCEL:
+            raw_docs = query_documents("orders", limit=500)
+            for doc in raw_docs:
+                oid = doc.get("id", "")
+                is_cafe = (doc.get("brand") == "cafe") or str(oid).startswith("MM-")
+                if (b_target == "cafe" and is_cafe) or (b_target == "restaurant" and not is_cafe):
+                    delete_document("orders", oid)
+                    count += 1
+        else:
+            if b_target == "cafe":
+                orders_to_del = db.query(Order).filter((Order.brand == "cafe") | (Order.id.like("MM-%"))).all()
+            else:
+                orders_to_del = db.query(Order).filter((Order.brand != "cafe") & (~Order.id.like("MM-%"))).all()
+            count = len(orders_to_del)
+            for o in orders_to_del:
+                db.delete(o)
+            db.commit()
+    else:
+        count = wipe_collection("orders")
+        if not settings.IS_VERCEL:
+            count = db.query(Order).delete()
+            db.commit()
+
     bump_db_revision()
-
-    if not settings.IS_VERCEL:
-        db.query(Order).delete()
-        db.commit()
-
     ip = get_client_ip(request)
-    log_audit(db, ip, current_admin.username, "WIPE_DATABASE", f"Wiped all {count} order records from database.")
-    return {"message": f"Successfully wiped {count} test order records."}
+    log_audit(db, ip, current_admin.username, "WIPE_DATABASE", f"Wiped {count} order records (brand_filter: '{b_target or 'ALL'}').")
+    return {"message": f"Successfully wiped {count} order records.", "count": count}
 
 @router.post("/orders/batch-delete", dependencies=[Depends(verify_csrf_token)])
 def batch_delete_orders(
@@ -458,16 +557,32 @@ def batch_delete_orders(
 def get_admin_reservations(
     search: Optional[str] = None,
     outlet_filter: Optional[str] = None,
+    brand_filter: Optional[str] = None,
     current_admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Fetches list of table reservations with optional search and outlet filtering."""
+    """Fetches list of table reservations with optional search, brand, and outlet filtering."""
+    admin_role = getattr(current_admin, "role", "Staff") or "Staff"
+    admin_outlet = getattr(current_admin, "outlet_id", "KL01") or "KL01"
+    if admin_role not in ("Super Admin", "Super Manager"):
+        outlet_filter = admin_outlet
+
+    outlet_variants = get_outlet_search_variants(outlet_filter)
+
     if settings.IS_VERCEL:
         raw_docs = query_documents("reservations", limit=200)
         filtered = []
         for r in raw_docs:
-            if outlet_filter and outlet_filter != "ALL" and r.get("outlet_id") != outlet_filter:
-                continue
+            if outlet_variants:
+                r_outlet = r.get("outlet_id", "KL01")
+                if r_outlet not in outlet_variants and normalize_outlet_code(r_outlet) not in outlet_variants:
+                    continue
+
+            if brand_filter and brand_filter.lower() != "all":
+                r_brand = r.get("brand", "restaurant")
+                if r_brand != brand_filter.lower():
+                    continue
+
             if search:
                 s_lower = search.strip().lower()
                 g_name = r.get("guest_name", "").lower()
@@ -489,7 +604,8 @@ def get_admin_reservations(
                     special_request=r.get("special_request"),
                     event_type=r.get("event_type", "Table Booking"),
                     status=r.get("status", "Pending"),
-                    outlet_id=r.get("outlet_id", "OUTLET-01"),
+                    outlet_id=normalize_outlet_code(r.get("outlet_id", "KL01")),
+                    brand=r.get("brand", "restaurant"),
                     created_at=_parse_datetime(r.get("created_at"))
                 )
             )
@@ -497,8 +613,10 @@ def get_admin_reservations(
         return filtered
 
     query = db.query(Reservation)
-    if outlet_filter and outlet_filter != "ALL":
-        query = query.filter(Reservation.outlet_id == outlet_filter)
+    if outlet_variants:
+        query = query.filter(Reservation.outlet_id.in_(outlet_variants))
+    if brand_filter and brand_filter.lower() != "all":
+        query = query.filter(Reservation.brand == brand_filter.lower())
     if search:
         s_term = f"%{search.strip().lower()}%"
         query = query.filter(
@@ -507,7 +625,27 @@ def get_admin_reservations(
             (Reservation.email.ilike(s_term)) |
             (Reservation.special_request.ilike(s_term))
         )
-    return query.order_by(Reservation.created_at.desc()).all()
+    reservations = query.order_by(Reservation.created_at.desc()).all()
+    result = []
+    for r in reservations:
+        result.append(
+            ReservationOut(
+                id=r.id,
+                guest_name=r.guest_name,
+                phone=r.phone,
+                email=r.email,
+                guests_count=r.guests_count,
+                reservation_date=r.reservation_date,
+                reservation_time=r.reservation_time,
+                special_request=r.special_request,
+                event_type=r.event_type,
+                status=r.status,
+                outlet_id=normalize_outlet_code(r.outlet_id or "KL01"),
+                brand=getattr(r, "brand", "restaurant") or "restaurant",
+                created_at=r.created_at
+            )
+        )
+    return result
 
 @router.patch("/reservations/{res_id}/status", response_model=ReservationOut, dependencies=[Depends(verify_csrf_token)])
 def update_reservation_status(
@@ -518,6 +656,17 @@ def update_reservation_status(
     db: Session = Depends(get_db)
 ):
     """Updates table reservation status."""
+    target_outlet = None
+    fs_doc = get_document("reservations", str(res_id))
+    if fs_doc:
+        target_outlet = fs_doc.get("outlet_id")
+    elif not settings.IS_VERCEL:
+        existing = db.query(Reservation).filter(Reservation.id == res_id).first()
+        if existing:
+            target_outlet = existing.outlet_id
+
+    enforce_outlet_rls(current_admin, target_outlet)
+
     update_document("reservations", str(res_id), {"status": payload.status})
     bump_db_revision()
 
@@ -559,6 +708,17 @@ def delete_reservation(
     db: Session = Depends(get_db)
 ):
     """Deletes a table reservation record."""
+    target_outlet = None
+    fs_doc = get_document("reservations", str(res_id))
+    if fs_doc:
+        target_outlet = fs_doc.get("outlet_id")
+    elif not settings.IS_VERCEL:
+        existing = db.query(Reservation).filter(Reservation.id == res_id).first()
+        if existing:
+            target_outlet = existing.outlet_id
+
+    enforce_outlet_rls(current_admin, target_outlet)
+
     delete_document("reservations", str(res_id))
     bump_db_revision()
 
@@ -623,16 +783,32 @@ def batch_delete_reservations(
 def get_admin_private_events(
     search: Optional[str] = None,
     outlet_filter: Optional[str] = None,
+    brand_filter: Optional[str] = None,
     current_admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Fetches list of private event inquiries with optional search and outlet filtering."""
+    """Fetches list of private event inquiries with optional search, brand, and outlet filtering."""
+    admin_role = getattr(current_admin, "role", "Staff") or "Staff"
+    admin_outlet = getattr(current_admin, "outlet_id", "KL01") or "KL01"
+    if admin_role not in ("Super Admin", "Super Manager"):
+        outlet_filter = admin_outlet
+
+    outlet_variants = get_outlet_search_variants(outlet_filter)
+
     if settings.IS_VERCEL:
         raw_docs = query_documents("private_events", limit=200)
         filtered = []
         for e in raw_docs:
-            if outlet_filter and outlet_filter != "ALL" and e.get("outlet_id") != outlet_filter:
-                continue
+            if outlet_variants:
+                e_outlet = e.get("outlet_id", "KL01")
+                if e_outlet not in outlet_variants and normalize_outlet_code(e_outlet) not in outlet_variants:
+                    continue
+
+            if brand_filter and brand_filter.lower() != "all":
+                e_brand = e.get("brand", "restaurant")
+                if e_brand != brand_filter.lower():
+                    continue
+
             if search:
                 s_lower = search.strip().lower()
                 o_name = e.get("organizer_name", "").lower()
@@ -655,7 +831,8 @@ def get_admin_private_events(
                     event_time=e.get("event_time"),
                     special_notes=e.get("special_notes"),
                     status=e.get("status", "Pending"),
-                    outlet_id=e.get("outlet_id", "OUTLET-01"),
+                    outlet_id=normalize_outlet_code(e.get("outlet_id", "KL01")),
+                    brand=e.get("brand", "restaurant"),
                     created_at=_parse_datetime(e.get("created_at"))
                 )
             )
@@ -663,8 +840,10 @@ def get_admin_private_events(
         return filtered
 
     query = db.query(PrivateEvent)
-    if outlet_filter and outlet_filter != "ALL":
-        query = query.filter(PrivateEvent.outlet_id == outlet_filter)
+    if outlet_variants:
+        query = query.filter(PrivateEvent.outlet_id.in_(outlet_variants))
+    if brand_filter and brand_filter.lower() != "all":
+        query = query.filter(PrivateEvent.brand == brand_filter.lower())
     if search:
         s_term = f"%{search.strip().lower()}%"
         query = query.filter(
@@ -674,7 +853,27 @@ def get_admin_private_events(
             (PrivateEvent.event_type.ilike(s_term)) |
             (PrivateEvent.special_notes.ilike(s_term))
         )
-    return query.order_by(PrivateEvent.created_at.desc()).all()
+    events = query.order_by(PrivateEvent.created_at.desc()).all()
+    result = []
+    for e in events:
+        result.append(
+            PrivateEventOut(
+                id=e.id,
+                organizer_name=e.organizer_name,
+                phone=e.phone,
+                email=e.email,
+                event_type=e.event_type,
+                guest_count=e.guest_count,
+                event_date=e.event_date,
+                event_time=e.event_time,
+                special_notes=e.special_notes,
+                status=e.status,
+                outlet_id=normalize_outlet_code(e.outlet_id or "KL01"),
+                brand=getattr(e, "brand", "restaurant") or "restaurant",
+                created_at=e.created_at
+            )
+        )
+    return result
 
 @router.patch("/private-events/{event_id}/status", response_model=PrivateEventOut, dependencies=[Depends(verify_csrf_token)])
 def update_private_event_status(
@@ -685,6 +884,17 @@ def update_private_event_status(
     db: Session = Depends(get_db)
 ):
     """Updates status of a private event inquiry."""
+    target_outlet = None
+    fs_doc = get_document("private_events", str(event_id))
+    if fs_doc:
+        target_outlet = fs_doc.get("outlet_id")
+    elif not settings.IS_VERCEL:
+        existing = db.query(PrivateEvent).filter(PrivateEvent.id == event_id).first()
+        if existing:
+            target_outlet = existing.outlet_id
+
+    enforce_outlet_rls(current_admin, target_outlet)
+
     update_document("private_events", str(event_id), {"status": payload.status})
     bump_db_revision()
 
@@ -726,6 +936,17 @@ def delete_private_event(
     db: Session = Depends(get_db)
 ):
     """Deletes a private event record."""
+    target_outlet = None
+    fs_doc = get_document("private_events", str(event_id))
+    if fs_doc:
+        target_outlet = fs_doc.get("outlet_id")
+    elif not settings.IS_VERCEL:
+        existing = db.query(PrivateEvent).filter(PrivateEvent.id == event_id).first()
+        if existing:
+            target_outlet = existing.outlet_id
+
+    enforce_outlet_rls(current_admin, target_outlet)
+
     delete_document("private_events", str(event_id))
     bump_db_revision()
 
@@ -848,17 +1069,17 @@ def get_employees(
 ):
     """Fetches employee directory with search, outlet filtering, sorting, and RBAC outlet scoping."""
     role = getattr(current_admin, 'role', 'Staff')
-    admin_outlet = getattr(current_admin, 'outlet_id', 'OUTLET-01')
+    admin_outlet = getattr(current_admin, 'outlet_id', 'KL01')
+    target_filter = outlet_filter if role in ["Super Admin", "Super Manager"] else admin_outlet
+    outlet_variants = get_outlet_search_variants(target_filter)
 
     if settings.IS_VERCEL:
         raw_docs = query_documents("employees", limit=200)
         filtered = []
         for e in raw_docs:
-            if role in ["Super Admin", "Super Manager"]:
-                if outlet_filter and outlet_filter != "ALL" and e.get("outlet_id") != outlet_filter:
-                    continue
-            else:
-                if e.get("outlet_id") != admin_outlet:
+            if outlet_variants:
+                e_outlet = e.get("outlet_id", "KL01")
+                if e_outlet not in outlet_variants and normalize_outlet_code(e_outlet) not in outlet_variants:
                     continue
 
             if search:
@@ -880,7 +1101,7 @@ def get_employees(
                     department=e.get("department", ""),
                     salary=float(e.get("salary", 0.0)),
                     status=e.get("status", "Active"),
-                    outlet_id=e.get("outlet_id", "OUTLET-01"),
+                    outlet_id=normalize_outlet_code(e.get("outlet_id", "KL01")),
                     created_at=_parse_datetime(e.get("created_at"))
                 )
             )
@@ -888,11 +1109,8 @@ def get_employees(
         return filtered
 
     query = db.query(Employee)
-    if role in ["Super Admin", "Super Manager"]:
-        if outlet_filter and outlet_filter != "ALL":
-            query = query.filter(Employee.outlet_id == outlet_filter)
-    else:
-        query = query.filter(Employee.outlet_id == admin_outlet)
+    if outlet_variants:
+        query = query.filter(Employee.outlet_id.in_(outlet_variants))
 
     if search:
         s_term = f"%{search.strip().lower()}%"
@@ -1051,6 +1269,17 @@ def delete_employee(
     db: Session = Depends(get_db)
 ):
     """Deletes an employee record."""
+    target_outlet = None
+    fs_doc = get_document("employees", str(emp_id))
+    if fs_doc:
+        target_outlet = fs_doc.get("outlet_id")
+    elif not settings.IS_VERCEL:
+        existing = db.query(Employee).filter(Employee.id == emp_id).first()
+        if existing:
+            target_outlet = existing.outlet_id
+
+    enforce_outlet_rls(current_admin, target_outlet)
+
     delete_document("employees", str(emp_id))
     bump_db_revision()
 

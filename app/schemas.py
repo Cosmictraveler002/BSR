@@ -1,20 +1,35 @@
-import html
+import re
 import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
 
 def sanitize_text(v: Optional[str]) -> Optional[str]:
-    """Utility validator to sanitize input strings and escape HTML tags."""
+    """Strip HTML/script tags from input strings to prevent XSS injection.
+    Does NOT entity-encode characters — normal punctuation (&, ', ", etc.)
+    is preserved as-is so user data (names, addresses) reaches the database intact.
+    Display-side escaping is handled by escapeHtml() in the frontend JS."""
     if v is None:
         return None
     cleaned = v.strip()
-    return html.escape(cleaned)
+    # Remove null bytes
+    cleaned = cleaned.replace('\x00', '')
+    # Strip HTML/script tags (e.g. <script>, <img>, <b>, </div>)
+    cleaned = re.sub(r'<[^>]*>', '', cleaned)
+    return cleaned
+
+def validate_brand_field(v: Optional[str]) -> str:
+    """Strict whitelist: only 'restaurant' or 'cafe' allowed, defaults to 'restaurant'."""
+    if not v:
+        return "restaurant"
+    clean = str(v).strip().lower()
+    return clean if clean in ("restaurant", "cafe") else "restaurant"
+
 
 class OrderItemSchema(BaseModel):
     id: str = Field(..., min_length=1, max_length=50)
     name: str = Field(..., min_length=1, max_length=150)
-    price: float = Field(..., ge=0.0)
-    qty: int = Field(..., ge=1, le=100)
+    price: float = Field(..., ge=0.0, le=50000.0)
+    qty: int = Field(..., ge=1, le=50)
 
     @field_validator("id", "name", mode="before")
     def sanitize_inputs(cls, v):
@@ -26,13 +41,18 @@ class OrderCreate(BaseModel):
     order_type: str = Field(..., pattern="^(Delivery|Dine-In|Takeaway)$")
     delivery_address: Optional[str] = Field(None, max_length=300)
     table_number: Optional[str] = Field(None, max_length=50)
-    items: List[OrderItemSchema]
+    items: List[OrderItemSchema] = Field(..., min_length=1, max_length=30)
     coupon_code: Optional[str] = Field(None, max_length=30)
-    outlet_id: Optional[str] = Field("OUTLET-01", max_length=50)
+    outlet_id: Optional[str] = Field(None, max_length=50)
+    brand: Optional[str] = Field("restaurant", max_length=20)
 
     @field_validator("customer_name", "delivery_address", "table_number", "coupon_code", "outlet_id", mode="before")
     def sanitize_inputs(cls, v):
         return sanitize_text(v)
+
+    @field_validator("brand", mode="before")
+    def sanitize_brand(cls, v):
+        return validate_brand_field(v)
 
 class OrderOut(BaseModel):
     id: str
@@ -47,12 +67,17 @@ class OrderOut(BaseModel):
     coupon_code: Optional[str] = None
     total: float
     status: str
-    outlet_id: Optional[str] = "OUTLET-01"
+    outlet_id: Optional[str] = "KL01"
+    brand: str = "restaurant"
     created_at: datetime.datetime
 
     @field_validator("outlet_id", mode="before")
     def default_outlet(cls, v):
-        return v or "OUTLET-01"
+        return v or "KL01"
+
+    @field_validator("brand", mode="before")
+    def default_brand(cls, v):
+        return validate_brand_field(v)
 
     class Config:
         from_attributes = True
@@ -64,16 +89,21 @@ class ReservationCreate(BaseModel):
     guest_name: str = Field(..., min_length=2, max_length=100)
     phone: str = Field(..., min_length=5, max_length=25, pattern=r"^\+?[0-9\s\-\(\)]{5,25}$")
     email: Optional[str] = Field(None, max_length=100)
-    guests_count: int = Field(2, ge=1, le=100)
+    guests_count: int = Field(2, ge=1, le=50)
     reservation_date: str = Field(..., max_length=30)
     reservation_time: str = Field(..., max_length=30)
     special_request: Optional[str] = Field(None, max_length=500)
     event_type: Optional[str] = Field("Table Booking", max_length=50)
-    outlet_id: Optional[str] = Field("OUTLET-01", max_length=50)
+    outlet_id: Optional[str] = Field(None, max_length=50)
+    brand: Optional[str] = Field("restaurant", max_length=20)
 
     @field_validator("guest_name", "email", "special_request", "event_type", "outlet_id", mode="before")
     def sanitize_inputs(cls, v):
         return sanitize_text(v)
+
+    @field_validator("brand", mode="before")
+    def sanitize_brand(cls, v):
+        return validate_brand_field(v)
 
 class ReservationOut(BaseModel):
     id: int
@@ -86,7 +116,8 @@ class ReservationOut(BaseModel):
     special_request: Optional[str] = None
     event_type: Optional[str] = "Table Booking"
     status: str
-    outlet_id: Optional[str] = "OUTLET-01"
+    outlet_id: Optional[str] = "KL01"
+    brand: str = "restaurant"
     created_at: datetime.datetime
 
     @field_validator("event_type", mode="before")
@@ -95,7 +126,11 @@ class ReservationOut(BaseModel):
 
     @field_validator("outlet_id", mode="before")
     def default_outlet(cls, v):
-        return v or "OUTLET-01"
+        return v or "KL01"
+
+    @field_validator("brand", mode="before")
+    def default_brand(cls, v):
+        return validate_brand_field(v)
 
     class Config:
         from_attributes = True
@@ -112,11 +147,16 @@ class PrivateEventCreate(BaseModel):
     event_date: str = Field(..., max_length=30)
     event_time: Optional[str] = Field(None, max_length=30)
     special_notes: Optional[str] = Field(None, max_length=1000)
-    outlet_id: Optional[str] = Field("OUTLET-01", max_length=50)
+    outlet_id: Optional[str] = Field(None, max_length=50)
+    brand: Optional[str] = Field("restaurant", max_length=20)
 
     @field_validator("organizer_name", "email", "event_type", "special_notes", "outlet_id", mode="before")
     def sanitize_inputs(cls, v):
         return sanitize_text(v)
+
+    @field_validator("brand", mode="before")
+    def sanitize_brand(cls, v):
+        return validate_brand_field(v)
 
 class PrivateEventOut(BaseModel):
     id: int
@@ -129,12 +169,17 @@ class PrivateEventOut(BaseModel):
     event_time: Optional[str] = None
     special_notes: Optional[str] = None
     status: str
-    outlet_id: Optional[str] = "OUTLET-01"
+    outlet_id: Optional[str] = "KL01"
+    brand: str = "restaurant"
     created_at: datetime.datetime
 
     @field_validator("outlet_id", mode="before")
     def default_outlet(cls, v):
-        return v or "OUTLET-01"
+        return v or "KL01"
+
+    @field_validator("brand", mode="before")
+    def default_brand(cls, v):
+        return validate_brand_field(v)
 
     class Config:
         from_attributes = True

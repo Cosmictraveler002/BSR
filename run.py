@@ -24,8 +24,12 @@ if __name__ == "__main__":
         host = "127.0.0.1"
         reload_mode = True
 
+    display_host = "localhost" if host == "0.0.0.0" else host
+
     print(f"[+] Starting BSR Bengali Restaurant FastAPI Server on Host {host}, Port {port}...")
-    print(f"[+] Website Portal: http://{host}:{port}/")
-    print(f"[+] Admin Security Hardened Portal: http://{host}:{port}/admin")
-    print(f"[+] API Documentation: http://{host}:{port}/docs")
+    print(f"[+] Website Portal: http://{display_host}:{port}/ (or http://127.0.0.1:{port}/)")
+    print(f"[+] Admin Security Hardened Portal: http://{display_host}:{port}/admin")
+    print(f"[+] API Documentation: http://{display_host}:{port}/docs")
+    if host == "0.0.0.0":
+        print(f"[i] Windows Note: Access via http://localhost:{port}/ or http://127.0.0.1:{port}/ (do not use 0.0.0.0 in browser)")
     uvicorn.run("app.main:app", host=host, port=port, reload=reload_mode)

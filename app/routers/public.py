@@ -2,12 +2,13 @@ import json
 import random
 import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Order, Reservation, PrivateEvent
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.core.db_sync import bump_db_revision
 from app.core.firestore_db import save_document, get_document, get_next_id
 from app.schemas import (
@@ -48,21 +49,79 @@ MENU_PRICES = {
     "Luchi": 40.0,
 }
 
-def generate_order_id() -> str:
-    """Generates a cryptographically secure unique order ID."""
+OUTLET_ALIAS_MAP = {
+    "OUTLET-01": "KL01",
+    "OUTLET-02": "KL02",
+    "OUTLET-03": "KL03",
+    "KL01": "KL01",
+    "KL02": "KL02",
+    "KL03": "KL03",
+    "MM01": "MM01",
+    "OUTLET-MM01": "MM01",
+    "MM-01": "MM01",
+}
+
+def normalize_outlet_code(raw: Optional[str], brand: Optional[str] = None) -> str:
+    """Normalizes outlet aliases to standard codes (e.g. OUTLET-01 -> KL01, MM01 -> MM01)."""
+    if not raw:
+        return "MM01" if (brand or "").strip().lower() == "cafe" else "KL01"
+    clean = raw.strip().upper()
+    return OUTLET_ALIAS_MAP.get(clean, clean)
+
+
+def generate_order_id(brand: str = "restaurant", outlet_code: Optional[str] = None) -> str:
+    """Generates a cryptographically secure unique order ID: MM-MM01-2026-XXXX or BSR-KL01-2026-XXXX."""
     rand_hex = secrets.token_hex(4).upper()
-    return f"BSR-2026-{rand_hex}"
+    b_clean = (brand or "restaurant").strip().lower()
+    prefix = "MM" if b_clean == "cafe" else "BSR"
+    default_outlet = "MM01" if b_clean == "cafe" else "KL01"
+    norm_outlet = normalize_outlet_code(outlet_code or default_outlet, brand=b_clean)
+    year = datetime.datetime.utcnow().year
+    return f"{prefix}-{norm_outlet}-{year}-{rand_hex}"
 
 
 
 @router.post("/orders", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
-def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
-    """Creates a new food order with server-side price validation."""
+@limiter.limit(settings.ORDERS_RATE_LIMIT)
+def create_order(request: Request, order_data: OrderCreate, db: Session = Depends(get_db)):
+    """Creates a new food order with server-side price validation, rate limiting, and brand verification."""
     if not order_data.items:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Order must contain at least one food item."
         )
+
+    brand = order_data.brand or "restaurant"
+    norm_outlet = normalize_outlet_code(order_data.outlet_id, brand=brand)
+
+    # External Client / Brand Verification (e.g. Meet Me Cafe)
+    brand_key = request.headers.get("X-Brand-Key") or request.headers.get("x-brand-key")
+    if brand == "cafe":
+        if settings.ENFORCE_CAFE_BRAND_KEY:
+            if not brand_key or brand_key != settings.CAFE_BRAND_API_KEY:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Invalid or missing X-Brand-Key header for Cafe orders."
+                )
+        elif brand_key and brand_key != settings.CAFE_BRAND_API_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Provided X-Brand-Key is invalid."
+            )
+
+    # Phone-based flood prevention: check how many orders this phone has placed recently
+    clean_phone = order_data.customer_phone.strip()
+    window_ago = datetime.datetime.utcnow() - datetime.timedelta(minutes=settings.PHONE_WINDOW_MINUTES)
+    if not settings.IS_VERCEL:
+        recent_phone_orders = db.query(Order).filter(
+            Order.customer_phone == clean_phone,
+            Order.created_at >= window_ago
+        ).count()
+        if recent_phone_orders >= settings.MAX_ORDERS_PER_PHONE_WINDOW:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Order limit reached for phone {clean_phone}. Maximum {settings.MAX_ORDERS_PER_PHONE_WINDOW} orders allowed within {settings.PHONE_WINDOW_MINUTES} minutes."
+            )
 
     # Server-Side Price & Subtotal Validation (Prevent client-side price manipulation)
     items_validated = []
@@ -89,13 +148,13 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
     items_json_str = json.dumps(items_validated)
 
     # Generate unique ID
-    order_id = generate_order_id()
+    order_id = generate_order_id(brand=brand, outlet_code=norm_outlet)
     if settings.IS_VERCEL:
         while get_document("orders", order_id):
-            order_id = generate_order_id()
+            order_id = generate_order_id(brand=brand, outlet_code=norm_outlet)
     else:
         while db.query(Order).filter(Order.id == order_id).first():
-            order_id = generate_order_id()
+            order_id = generate_order_id(brand=brand, outlet_code=norm_outlet)
 
     order_dict = {
         "id": order_id,
@@ -110,7 +169,8 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
         "coupon_code": coupon_code,
         "total": total,
         "status": "Confirmed",
-        "outlet_id": order_data.outlet_id or "OUTLET-01",
+        "outlet_id": norm_outlet,
+        "brand": brand,
         "created_at": created_at_dt.isoformat()
     }
 
@@ -132,7 +192,8 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
             coupon_code=coupon_code,
             total=total,
             status="Confirmed",
-            outlet_id=order_data.outlet_id or "OUTLET-01",
+            outlet_id=norm_outlet,
+            brand=brand,
             created_at=created_at_dt
         )
         try:
@@ -156,6 +217,7 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
         total=total,
         status="Confirmed",
         outlet_id=order_dict["outlet_id"],
+        brand=brand,
         created_at=created_at_dt
     )
 
@@ -195,7 +257,8 @@ def get_order_by_id(order_id: str, phone: Optional[str] = None, db: Session = De
                 coupon_code=fs_order.get("coupon_code"),
                 total=fs_order.get("total", 0.0),
                 status=fs_order.get("status", "Confirmed"),
-                outlet_id=fs_order.get("outlet_id", "OUTLET-01"),
+                outlet_id=fs_order.get("outlet_id", "KL01"),
+                brand=fs_order.get("brand", "cafe" if str(fs_order.get("id", "")).startswith("MM-") else "restaurant"),
                 created_at=created_at_val
             )
 
@@ -220,7 +283,8 @@ def get_order_by_id(order_id: str, phone: Optional[str] = None, db: Session = De
                 coupon_code=order.coupon_code,
                 total=order.total,
                 status=order.status,
-                outlet_id=order.outlet_id or "OUTLET-01",
+                outlet_id=order.outlet_id or "KL01",
+                brand=getattr(order, "brand", None) or ("cafe" if str(order.id).startswith("MM-") else "restaurant"),
                 created_at=order.created_at
             )
 
@@ -230,9 +294,25 @@ def get_order_by_id(order_id: str, phone: Optional[str] = None, db: Session = De
     )
 
 @router.post("/reservations", response_model=ReservationOut, status_code=status.HTTP_201_CREATED)
-def create_reservation(res_data: ReservationCreate, db: Session = Depends(get_db)):
-    """Submits a new table reservation request."""
+@limiter.limit(settings.RESERVATIONS_RATE_LIMIT)
+def create_reservation(request: Request, res_data: ReservationCreate, db: Session = Depends(get_db)):
+    """Submits a new table reservation request with rate limiting and flood guard."""
+    clean_phone = res_data.phone.strip()
+    window_ago = datetime.datetime.utcnow() - datetime.timedelta(minutes=settings.PHONE_WINDOW_MINUTES)
+    if not settings.IS_VERCEL:
+        recent_res = db.query(Reservation).filter(
+            Reservation.phone == clean_phone,
+            Reservation.created_at >= window_ago
+        ).count()
+        if recent_res >= settings.MAX_ORDERS_PER_PHONE_WINDOW:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Reservation limit reached for this phone number. Please wait a few minutes before submitting another request."
+            )
+
     created_at_dt = datetime.datetime.utcnow()
+    brand = res_data.brand or "restaurant"
+    norm_outlet = normalize_outlet_code(res_data.outlet_id, brand=brand)
     
     if settings.IS_VERCEL:
         res_id = get_next_id("reservations")
@@ -247,7 +327,8 @@ def create_reservation(res_data: ReservationCreate, db: Session = Depends(get_db
             special_request=res_data.special_request.strip() if res_data.special_request else None,
             event_type=res_data.event_type or "Table Booking",
             status="Pending",
-            outlet_id=res_data.outlet_id or "OUTLET-01"
+            outlet_id=norm_outlet,
+            brand=brand
         )
         db.add(new_res)
         db.commit()
@@ -265,7 +346,8 @@ def create_reservation(res_data: ReservationCreate, db: Session = Depends(get_db
         "special_request": res_data.special_request.strip() if res_data.special_request else None,
         "event_type": res_data.event_type or "Table Booking",
         "status": "Pending",
-        "outlet_id": res_data.outlet_id or "OUTLET-01",
+        "outlet_id": norm_outlet,
+        "brand": brand,
         "created_at": created_at_dt.isoformat()
     }
 
@@ -284,6 +366,7 @@ def create_reservation(res_data: ReservationCreate, db: Session = Depends(get_db
         event_type=res_dict["event_type"],
         status=res_dict["status"],
         outlet_id=res_dict["outlet_id"],
+        brand=brand,
         created_at=created_at_dt
     )
 
@@ -315,7 +398,8 @@ def get_reservation_by_id(res_id: int, phone: Optional[str] = None, db: Session 
                 special_request=fs_res.get("special_request"),
                 event_type=fs_res.get("event_type", "Table Booking"),
                 status=fs_res.get("status", "Pending"),
-                outlet_id=fs_res.get("outlet_id", "OUTLET-01"),
+                outlet_id=fs_res.get("outlet_id", "KL01"),
+                brand=fs_res.get("brand", "restaurant"),
                 created_at=created_at_val
             )
 
@@ -334,9 +418,12 @@ def get_reservation_by_id(res_id: int, phone: Optional[str] = None, db: Session 
     )
 
 @router.post("/private-events", response_model=PrivateEventOut, status_code=status.HTTP_201_CREATED)
-def create_private_event(event_data: PrivateEventCreate, db: Session = Depends(get_db)):
-    """Submits a new private dining event / banquet inquiry to the database."""
+@limiter.limit(settings.RESERVATIONS_RATE_LIMIT)
+def create_private_event(request: Request, event_data: PrivateEventCreate, db: Session = Depends(get_db)):
+    """Submits a new private dining event / banquet inquiry to the database with rate limiting."""
     created_at_dt = datetime.datetime.utcnow()
+    brand = event_data.brand or "restaurant"
+    norm_outlet = normalize_outlet_code(event_data.outlet_id, brand=brand)
 
     if settings.IS_VERCEL:
         event_id = get_next_id("private_events")
@@ -351,7 +438,8 @@ def create_private_event(event_data: PrivateEventCreate, db: Session = Depends(g
             event_time=event_data.event_time.strip() if event_data.event_time else "TBD",
             special_notes=event_data.special_notes.strip() if event_data.special_notes else None,
             status="Pending",
-            outlet_id=event_data.outlet_id or "OUTLET-01"
+            outlet_id=norm_outlet,
+            brand=brand
         )
         db.add(new_event)
         db.commit()
@@ -369,7 +457,8 @@ def create_private_event(event_data: PrivateEventCreate, db: Session = Depends(g
         "event_time": event_data.event_time.strip() if event_data.event_time else "TBD",
         "special_notes": event_data.special_notes.strip() if event_data.special_notes else None,
         "status": "Pending",
-        "outlet_id": event_data.outlet_id or "OUTLET-01",
+        "outlet_id": norm_outlet,
+        "brand": brand,
         "created_at": created_at_dt.isoformat()
     }
 
@@ -388,5 +477,6 @@ def create_private_event(event_data: PrivateEventCreate, db: Session = Depends(g
         special_notes=event_dict["special_notes"],
         status=event_dict["status"],
         outlet_id=event_dict["outlet_id"],
+        brand=brand,
         created_at=created_at_dt
     )

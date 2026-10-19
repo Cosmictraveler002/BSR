@@ -15,6 +15,28 @@ class Settings(BaseSettings):
     COOKIE_NAME: str = "bsr_admin_session"
     CSRF_HEADER_NAME: str = "X-CSRF-Token"
 
+    # Admin Login Rate Limiting Configuration
+    ADMIN_LOGIN_RATE_LIMIT: str = os.getenv("ADMIN_LOGIN_RATE_LIMIT", "10/minute")
+    MAX_FAILED_LOGIN_ATTEMPTS: int = int(os.getenv("MAX_FAILED_LOGIN_ATTEMPTS", "5"))
+    LOGIN_LOCKOUT_SECONDS: int = int(os.getenv("LOGIN_LOCKOUT_SECONDS", "300"))
+
+    # Public Order & Reservation Server-Side Rate Limiting & DoS Protection
+    ORDERS_RATE_LIMIT: str = os.getenv("ORDERS_RATE_LIMIT", "30/minute")
+    RESERVATIONS_RATE_LIMIT: str = os.getenv("RESERVATIONS_RATE_LIMIT", "20/minute")
+    MAX_ORDERS_PER_PHONE_WINDOW: int = int(os.getenv("MAX_ORDERS_PER_PHONE_WINDOW", "5"))
+    PHONE_WINDOW_MINUTES: int = int(os.getenv("PHONE_WINDOW_MINUTES", "10"))
+    MAX_PAYLOAD_SIZE_BYTES: int = int(os.getenv("MAX_PAYLOAD_SIZE_BYTES", str(64 * 1024)))  # 64 KB max payload
+
+    # External Client / Meet Me Cafe Integration Verification
+    CAFE_BRAND_API_KEY: str = os.getenv("CAFE_BRAND_API_KEY", "mm_live_cafe_2026")
+    ENFORCE_CAFE_BRAND_KEY: bool = os.getenv("ENFORCE_CAFE_BRAND_KEY", "false").lower() in ("true", "1", "yes")
+
+    # Allowed CORS Origins (comma-separated)
+    ALLOWED_ORIGINS: str = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:8000,http://127.0.0.1:8000,https://bsr.vercel.app,https://www.bangalirsokherrannaghor.in,https://bangalirsokherrannaghor.in"
+    )
+
     # Default Admin Initial Setup
     DEFAULT_ADMIN_USER: str = os.getenv("ADMIN_USERNAME", "admin")
     DEFAULT_ADMIN_PASS: str = os.getenv("ADMIN_PASSWORD", "bsr@admin2026")

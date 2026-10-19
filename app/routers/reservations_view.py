@@ -1,6 +1,8 @@
 import os
+import re
 import json
 import datetime
+
 from typing import Optional
 from fastapi import APIRouter, Request, Form, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -132,21 +134,31 @@ def post_reserve_submit(
     res_time = session_data.get("reservation_time", "19:00")
     seating_zone = session_data.get("seating_zone", "Main Royal Hall")
 
+    def _clean(val):
+        """Strip HTML tags only — preserve normal punctuation in guest data."""
+        if not val:
+            return val
+        return re.sub(r'<[^>]*>', '', val.strip().replace('\x00', ''))
+
     notes = []
     if seating_zone:
-        notes.append(f"Atmosphere Zone: {seating_zone}")
+        notes.append(f"Atmosphere Zone: {_clean(seating_zone)}")
     if occasion:
-        notes.append(f"Occasion: {occasion}")
+        notes.append(f"Occasion: {_clean(occasion)}")
     if special_request and special_request.strip():
-        notes.append(special_request.strip())
-    
+        notes.append(_clean(special_request))
+
     full_special_request = " | ".join(notes)
+
+    clean_guest_name = _clean(guest_name)
+    clean_phone = _clean(phone)
+    clean_email = _clean(email) if email else None
 
     # Save to SQLite Database
     new_res = Reservation(
-        guest_name=guest_name.strip(),
-        phone=phone.strip(),
-        email=email.strip() if email else None,
+        guest_name=clean_guest_name,
+        phone=clean_phone,
+        email=clean_email,
         guests_count=guests_count,
         reservation_date=res_date,
         reservation_time=res_time,
@@ -162,7 +174,8 @@ def post_reserve_submit(
     save_document("reservations", str(new_res.id), new_res.to_dict())
 
     ip = get_client_ip(request)
-    log_audit(db, ip, "GUEST", "CREATE_RESERVATION", f"Created table reservation #{new_res.id} for guest '{guest_name}'")
+    log_audit(db, ip, "GUEST", "CREATE_RESERVATION", f"Created table reservation #{new_res.id} for guest '{clean_guest_name}'")
+
 
     response = RedirectResponse(url=f"/reserve/confirmation/{new_res.id}", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(key=SESSION_COOKIE_NAME)

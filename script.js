@@ -2,7 +2,37 @@
 // বাঙালির শখের রান্নাঘর - Pure Vanilla JavaScript Controls
 // ==========================================================================
 
+// --- Global HTML Escaping Utility for XSS Prevention ---
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
+// --- Global API Host Resolver for Local Development (Live Server port 5500 vs FastAPI port 8000) ---
+const _origFetch = window.fetch;
+window.fetch = function (resource, init) {
+    try {
+        const isDevDifferentPort = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') && window.location.port !== '8000';
+        const isFileProto = window.location.protocol === 'file:';
+        if (isDevDifferentPort || isFileProto) {
+            if (typeof resource === 'string' && resource.startsWith('/api/')) {
+                resource = `http://127.0.0.1:8000${resource}`;
+            }
+        }
+    } catch (e) {
+        // Fallback to original resource if parsing fails
+    }
+    return _origFetch.call(this, resource, init);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
+
 
     // ==========================================================================
     // --- Performance Utilities (Throttle, Debounce, Mobile Detection) ---
@@ -160,10 +190,17 @@ document.addEventListener('DOMContentLoaded', () => {
             reservationModal.classList.add('active');
             document.body.style.overflow = 'hidden';
             stopSmoothScroll();
+            // Push a dummy history entry so the mobile back gesture closes this panel
+            // instead of navigating away from the page.
+            history.pushState({ bsrPanel: 'reservation' }, '');
         } else {
             reservationModal.classList.remove('active');
             document.body.style.overflow = '';
             startSmoothScroll();
+            // Pop the dummy entry if we closed programmatically (not via back gesture)
+            if (history.state && history.state.bsrPanel === 'reservation') {
+                history.back();
+            }
         }
     }
 
@@ -520,7 +557,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const category = typeEl ? typeEl.value : 'Table Booking';
 
             const outletEl = document.getElementById('res-outlet-id');
-            const outletId = outletEl ? outletEl.value : 'OUTLET-01';
+            const outletId = outletEl ? outletEl.value : 'KL01';
+            const brand = outletId === 'MM01' ? 'cafe' : 'restaurant';
 
             if (category === 'Private Event') {
                 const eventPayload = {
@@ -532,7 +570,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     event_date: dateEl && dateEl.value ? dateEl.value : new Date().toISOString().split('T')[0],
                     event_time: timeEl && timeEl.value ? timeEl.value : '19:00',
                     special_notes: reqEl && reqEl.value ? reqEl.value.trim() : null,
-                    outlet_id: outletId
+                    outlet_id: outletId,
+                    brand: brand
                 };
 
                 try {
@@ -568,7 +607,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     reservation_time: timeEl && timeEl.value ? timeEl.value : '19:00',
                     special_request: reqEl && reqEl.value ? reqEl.value.trim() : null,
                     event_type: 'Table Booking',
-                    outlet_id: outletId
+                    outlet_id: outletId,
+                    brand: brand
                 };
 
                 try {
@@ -795,12 +835,38 @@ document.addEventListener('DOMContentLoaded', () => {
             cartDrawer.classList.add('active');
             document.body.style.overflow = 'hidden';
             stopSmoothScroll();
+            // Push a dummy history entry so the mobile back gesture closes this panel
+            // instead of navigating away from the page.
+            history.pushState({ bsrPanel: 'cart' }, '');
         } else {
             cartDrawer.classList.remove('active');
             document.body.style.overflow = '';
             startSmoothScroll();
+            // Pop the dummy entry if we closed programmatically (not via back gesture)
+            if (history.state && history.state.bsrPanel === 'cart') {
+                history.back();
+            }
         }
     }
+
+    // --- Mobile back-gesture interception (popstate) ---
+    // Fired when the user swipes back on mobile. If a panel is open, close it
+    // instead of letting the browser navigate away from the page.
+    window.addEventListener('popstate', function (e) {
+        const panel = e.state && e.state.bsrPanel;
+        if (panel === 'reservation' && reservationModal && reservationModal.classList.contains('active')) {
+            reservationModal.classList.remove('active');
+            document.body.style.overflow = '';
+            if (lenis) lenis.start();
+            return;
+        }
+        if (panel === 'cart' && cartDrawer && cartDrawer.classList.contains('active')) {
+            cartDrawer.classList.remove('active');
+            document.body.style.overflow = '';
+            if (lenis) lenis.start();
+            return;
+        }
+    });
 
     if (cartBtn) cartBtn.addEventListener('click', () => toggleCartDrawer(true));
     if (closeCartBtn) closeCartBtn.addEventListener('click', () => toggleCartDrawer(false));
@@ -894,9 +960,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 itemRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed var(--color-border-subtle);';
                 itemRow.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        ${item.image ? `<img src="${item.image}" alt="${item.name}" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover;">` : ''}
+                        ${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" style="width: 44px; height: 44px; border-radius: 6px; object-fit: cover;">` : ''}
                         <div>
-                            <h4 class="font-bengali" style="font-weight: 700; font-size: 0.9rem; color: var(--color-primary); margin: 0;">${item.name}</h4>
+                            <h4 class="font-bengali" style="font-weight: 700; font-size: 0.9rem; color: var(--color-primary); margin: 0;">${escapeHtml(item.name)}</h4>
                             <span style="font-size: 0.75rem; color: var(--color-text-muted);">₹${item.price} each</span>
                         </div>
                     </div>
@@ -972,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.className = 'checkout-item-row';
             row.innerHTML = `
                 <div>
-                    <strong>${item.name}</strong> × ${item.quantity}
+                    <strong>${escapeHtml(item.name)}</strong> × ${item.quantity}
                 </div>
                 <strong>₹${item.price * item.quantity}</strong>
             `;
@@ -1063,7 +1129,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const totals = calculateCheckoutTotals();
 
             const outletSelectEl = document.getElementById('chk-outlet-id') || document.getElementById('p-outlet-id');
-            const selectedOutletId = outletSelectEl ? outletSelectEl.value : 'OUTLET-01';
+            const selectedOutletId = outletSelectEl ? outletSelectEl.value : 'KL01';
+            const orderBrand = selectedOutletId === 'MM01' ? 'cafe' : 'restaurant';
 
             const orderPayload = {
                 customer_name: name,
@@ -1078,7 +1145,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     qty: item.quantity
                 })),
                 coupon_code: null,
-                outlet_id: selectedOutletId
+                outlet_id: selectedOutletId,
+                brand: orderBrand
             };
 
             let createdOrder = null;
@@ -1113,9 +1181,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!createdOrder) {
-                // Fallback client order object if server offline
+                const fallbackOutlet = (selectedOutletId || 'KL01').replace('OUTLET-01', 'KL01').replace('OUTLET-02', 'KL02').replace('OUTLET-03', 'KL03');
+                const randHex = Math.random().toString(16).slice(2, 10).toUpperCase();
                 createdOrder = {
-                    id: `BSR-${Math.floor(100000 + Math.random() * 900000)}`,
+                    id: `BSR-${fallbackOutlet}-${new Date().getFullYear()}-${randHex}`,
                     date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
                     customerName: name,
                     phone: phone,
@@ -1171,12 +1240,12 @@ document.addEventListener('DOMContentLoaded', () => {
         receiptDetails.innerHTML = `
             <div style="border-bottom: 1px solid var(--color-border-subtle); padding-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between;">
-                    <strong>Order ID: ${order.id}</strong>
-                    <span style="color: var(--color-text-muted); font-size: 0.8rem;">${order.date}</span>
+                    <strong>Order ID: ${escapeHtml(order.id)}</strong>
+                    <span style="color: var(--color-text-muted); font-size: 0.8rem;">${escapeHtml(order.date)}</span>
                 </div>
                 <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">
-                    Customer: <strong>${order.customerName}</strong> (${order.phone})<br>
-                    ${order.orderType}: ${order.address}
+                    Customer: <strong>${escapeHtml(order.customerName)}</strong> (${escapeHtml(order.phone)})<br>
+                    ${escapeHtml(order.orderType)}: ${escapeHtml(order.address)}
                 </div>
             </div>
 
@@ -1251,15 +1320,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const card = document.createElement('div');
                 card.className = 'history-card';
 
-                const itemsSummary = order.items.map(i => `${i.name} (${i.quantity})`).join(', ');
+                const itemsSummary = order.items.map(i => `${escapeHtml(i.name)} (${i.quantity})`).join(', ');
 
                 card.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="font-size: 0.95rem; color: var(--color-primary);">${order.id}</strong>
-                            <span class="status-badge" style="margin-left: 8px;">${order.status}</span>
+                            <strong style="font-size: 0.95rem; color: var(--color-primary);">${escapeHtml(order.id)}</strong>
+                            <span class="status-badge" style="margin-left: 8px;">${escapeHtml(order.status)}</span>
                         </div>
-                        <span style="font-size: 0.8rem; color: var(--color-text-muted);">${order.date}</span>
+                        <span style="font-size: 0.8rem; color: var(--color-text-muted);">${escapeHtml(order.date)}</span>
                     </div>
 
                     <div style="font-size: 0.85rem; color: var(--color-text-muted);">
@@ -1268,7 +1337,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--color-border-subtle); padding-top: 8px; margin-top: 4px;">
                         <div>
-                            <span style="font-size: 0.8rem; color: var(--color-text-muted);">Payment: ${order.paymentMethod}</span>
+                            <span style="font-size: 0.8rem; color: var(--color-text-muted);">Payment: ${escapeHtml(order.paymentMethod)}</span>
                             <div style="font-weight: 700; font-size: 1.05rem; color: var(--color-secondary);">Total: ₹${order.finalTotal}</div>
                         </div>
                         <button class="btn btn-outline reorder-btn" data-id="${order.id}" style="padding: 6px 14px; font-size: 0.75rem;">
@@ -2060,7 +2129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const res = await fetch('/api/admin/sync-status', {
+            const res = await fetch(getApiUrl('/api/admin/sync-status'), {
                 method: 'GET',
                 headers: getAuthHeaders(),
                 cache: 'no-store'
@@ -2164,7 +2233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         stopAdminSyncSchedule();
 
         try {
-            await fetch('/api/admin/logout', { method: 'POST' });
+            await fetch(getApiUrl('/api/admin/logout'), { method: 'POST' });
         } catch (e) {
             // Ignore network disconnects during logout
         }
@@ -2187,6 +2256,16 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(`🔒 ${reasonMessage}`);
     }
 
+    function getApiUrl(endpoint) {
+        if (!endpoint.startsWith('/')) endpoint = '/' + endpoint;
+        const isDevDifferentPort = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') && window.location.port !== '8000';
+        const isFileProto = window.location.protocol === 'file:';
+        if (isDevDifferentPort || isFileProto) {
+            return `http://127.0.0.1:8000${endpoint}`;
+        }
+        return endpoint;
+    }
+
     function getAuthHeaders(extraHeaders = {}) {
         const headers = { ...extraHeaders };
         const csrf = getCsrfToken();
@@ -2206,7 +2285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isLocalLoggedIn = sessionStorage.getItem('bsr_admin_logged_in') === 'true' || localStorage.getItem('bsr_admin_logged_in') === 'true';
 
         try {
-            const res = await fetch('/api/admin/me', {
+            const res = await fetch(getApiUrl('/api/admin/me'), {
                 headers: getAuthHeaders()
             });
             if (res.ok) {
@@ -2248,33 +2327,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 sessionStorage.setItem('bsr_admin_logged_in', 'true');
+                sessionStorage.setItem('bsr_admin_username', data.username || 'admin');
+                sessionStorage.setItem('bsr_admin_role', data.role || 'Super Admin');
                 adminLoginScreen.classList.add('hidden');
                 adminDashboardScreen.classList.remove('hidden');
                 renderAdminDashboard();
                 loadInlineReservations();
                 startAdminSyncSchedule();
                 startAdminInactivityTracker();
+            } else if (res.status === 401) {
+                // Backend explicitly rejected authentication
+                stopAdminInactivityTracker();
+                stopAdminSyncSchedule();
+                sessionStorage.removeItem('bsr_admin_logged_in');
+                sessionStorage.removeItem('bsr_admin_access_token');
+                sessionStorage.removeItem('bsr_csrf_token');
+                localStorage.removeItem('bsr_admin_logged_in');
+                localStorage.removeItem('bsr_admin_access_token');
+                if (adminDashboardScreen) adminDashboardScreen.classList.add('hidden');
+                if (adminLoginScreen) adminLoginScreen.classList.remove('hidden');
+                if (adminLoginError) adminLoginError.classList.add('hidden');
             } else {
-                // Session expired or unauthenticated
-                if (isLocalLoggedIn) {
-                    performAdminAutoLogout('Admin session expired. Please re-login.');
-                } else {
-                    stopAdminInactivityTracker();
-                    stopAdminSyncSchedule();
-                    sessionStorage.removeItem('bsr_admin_logged_in');
-                    sessionStorage.removeItem('bsr_admin_access_token');
-                    sessionStorage.removeItem('bsr_csrf_token');
-                    localStorage.removeItem('bsr_admin_logged_in');
-                    localStorage.removeItem('bsr_admin_access_token');
-                    if (adminDashboardScreen) adminDashboardScreen.classList.add('hidden');
-                    if (adminLoginScreen) adminLoginScreen.classList.remove('hidden');
-                    if (adminLoginError) adminLoginError.classList.add('hidden');
-                }
+                // Status 404 or non-API server -> trigger local fallback
+                throw new Error('API_UNAVAILABLE');
             }
         } catch (err) {
-            // Network fallback mode
+            // Network fallback mode / offline dev mode
             if (isLocalLoggedIn) {
-                if (adminUserDisplay) adminUserDisplay.textContent = 'Master Admin';
+                const savedUser = sessionStorage.getItem('bsr_admin_username') || 'SuperAdmin';
+                const savedRole = sessionStorage.getItem('bsr_admin_role') || 'Super Admin';
+                window.currentAdminRole = savedRole;
+                window.currentAdminUsername = savedUser;
+                if (adminUserDisplay) adminUserDisplay.textContent = savedUser;
+                const adminRoleDisplay = document.getElementById('admin-role-display');
+                if (adminRoleDisplay) adminRoleDisplay.textContent = savedRole;
+
                 adminLoginScreen.classList.add('hidden');
                 adminDashboardScreen.classList.remove('hidden');
                 renderAdminDashboard();
@@ -2295,6 +2382,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
+    let loginLockoutInterval = null;
+
+    function startLoginLockoutTimer(seconds) {
+        const submitBtn = adminLoginForm ? adminLoginForm.querySelector('button[type="submit"]') : null;
+        if (!submitBtn) return;
+
+        let remaining = parseInt(seconds) || 300;
+        submitBtn.disabled = true;
+
+        if (loginLockoutInterval) clearInterval(loginLockoutInterval);
+
+        const originalText = submitBtn.getAttribute('data-original-text') || submitBtn.textContent || 'Sign In';
+        if (!submitBtn.hasAttribute('data-original-text')) {
+            submitBtn.setAttribute('data-original-text', originalText);
+        }
+
+        const updateBtn = () => {
+            if (remaining <= 0) {
+                clearInterval(loginLockoutInterval);
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+                if (adminLoginError) adminLoginError.classList.add('hidden');
+            } else {
+                const mins = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+                const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+                submitBtn.textContent = `Locked out (${timeStr})`;
+                remaining--;
+            }
+        };
+
+        updateBtn();
+        loginLockoutInterval = setInterval(updateBtn, 1000);
+    }
+
     if (adminLoginForm) {
         adminLoginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2303,8 +2425,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (adminLoginError) adminLoginError.classList.add('hidden');
 
+            const tryLocalLogin = () => {
+                const isDefaultAdmin = (usernameInput.toLowerCase() === 'admin' && passwordInput === 'bsr@admin2026');
+                const isSuperAdmin = (usernameInput.toLowerCase() === 'superadmin' && passwordInput === 'bSr@admin2869');
+
+                if (isDefaultAdmin || isSuperAdmin) {
+                    const resolvedUser = isSuperAdmin ? 'SuperAdmin' : 'admin';
+                    sessionStorage.setItem('bsr_admin_logged_in', 'true');
+                    sessionStorage.setItem('bsr_admin_username', resolvedUser);
+                    sessionStorage.setItem('bsr_admin_role', 'Super Admin');
+                    localStorage.setItem('bsr_admin_logged_in', 'true');
+                    showToast(`Welcome ${resolvedUser} to Admin Portal!`);
+                    checkAdminSession();
+                    return true;
+                }
+                return false;
+            };
+
             try {
-                const res = await fetch('/api/admin/login', {
+                const res = await fetch(getApiUrl('/api/admin/login'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: usernameInput, password: passwordInput })
@@ -2318,22 +2457,45 @@ document.addEventListener('DOMContentLoaded', () => {
                         localStorage.setItem('bsr_admin_access_token', data.access_token);
                     }
                     sessionStorage.setItem('bsr_admin_logged_in', 'true');
+                    if (data.username) sessionStorage.setItem('bsr_admin_username', data.username);
+                    if (data.role) sessionStorage.setItem('bsr_admin_role', data.role);
                     showToast('🔒 Authenticated via Secure FastAPI Session!');
                     checkAdminSession();
-                } else {
-                    const err = await res.json();
+                } else if (res.status === 429) {
+                    const err = await res.json().catch(() => ({ detail: 'Too many requests.' }));
+                    const retryAfterHeader = res.headers.get('Retry-After');
+                    let lockoutSecs = retryAfterHeader ? parseInt(retryAfterHeader, 10) : 300;
+                    if (!lockoutSecs || isNaN(lockoutSecs)) lockoutSecs = 300;
+
+                    const errorMsg = err.detail || `Too many failed login attempts. Please wait ${lockoutSecs} seconds before trying again.`;
                     if (adminLoginError) {
-                        adminLoginError.textContent = err.detail || 'Invalid Admin Username or Password!';
+                        adminLoginError.textContent = `⏳ ${errorMsg}`;
                         adminLoginError.classList.remove('hidden');
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast('⚠️ Rate limit exceeded on Admin Login!');
+                    }
+                    startLoginLockoutTimer(lockoutSecs);
+                } else if (res.status === 404) {
+                    // API endpoint doesn't exist on this static server -> attempt offline fallback
+                    if (!tryLocalLogin()) {
+                        if (adminLoginError) {
+                            adminLoginError.textContent = 'Invalid Admin Username or Password!';
+                            adminLoginError.classList.remove('hidden');
+                        }
+                    }
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    if (!tryLocalLogin()) {
+                        if (adminLoginError) {
+                            adminLoginError.textContent = err.detail || 'Invalid Admin Username or Password!';
+                            adminLoginError.classList.remove('hidden');
+                        }
                     }
                 }
             } catch (err) {
-                // Fallback for standalone static testing
-                if (usernameInput === 'admin' && passwordInput === 'bsr@admin2026') {
-                    sessionStorage.setItem('bsr_admin_logged_in', 'true');
-                    checkAdminSession();
-                    showToast('Welcome to Admin Portal!');
-                } else {
+                // Network error / connection refused -> offline fallback
+                if (!tryLocalLogin()) {
                     if (adminLoginError) {
                         adminLoginError.textContent = 'Invalid Admin Username or Password!';
                         adminLoginError.classList.remove('hidden');
@@ -2343,11 +2505,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+
     if (adminLogoutBtn) {
         adminLogoutBtn.addEventListener('click', async () => {
             await performAdminAutoLogout('Logged out from Admin Portal.');
         });
     }
+
+    let currentBrandFilter = 'ALL'; // 'ALL', 'RESTAURANT', or 'CAFE'
 
     async function renderAdminDashboard() {
         if (!adminOrdersList) return;
@@ -2366,9 +2531,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (statusFilterVal !== 'ALL') params.append('status_filter', statusFilterVal);
             if (typeFilterVal !== 'ALL') params.append('type_filter', typeFilterVal);
             if (outletFilterVal !== 'ALL') params.append('outlet_filter', outletFilterVal);
+            if (currentBrandFilter !== 'ALL') params.append('brand_filter', currentBrandFilter.toLowerCase());
             params.append('_t', Date.now());
 
-            const res = await fetch(`/api/admin/orders?${params.toString()}`, { headers: getAuthHeaders(), cache: 'no-store' });
+            const res = await fetch(getApiUrl(`/api/admin/orders?${params.toString()}`), { headers: getAuthHeaders(), cache: 'no-store' });
             if (res.ok) {
                 const apiOrders = await res.json();
                 orders = apiOrders.map(o => ({
@@ -2387,7 +2553,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     deliveryFee: 0,
                     finalTotal: o.total,
                     status: o.status,
-                    outletId: o.outlet_id || 'OUTLET-01'
+                    outletId: o.outlet_id || 'KL01',
+                    brand: o.brand || (o.id && o.id.startsWith('MM-') ? 'cafe' : 'restaurant')
                 }));
             } else if (res.status === 401) {
                 localStorage.removeItem('bsr_admin_logged_in');
@@ -2417,11 +2584,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (metricCompletedOrders) metricCompletedOrders.textContent = completedOrders;
         if (filteredCountEl) filteredCountEl.textContent = orders.length;
 
-        // Fetch bookings & events count asynchronously for 5th KPI card
+        // Fetch bookings & events count asynchronously for 5th KPI card (respects brand filter)
         try {
+            const resParams = new URLSearchParams();
+            if (currentBrandFilter !== 'ALL') resParams.append('brand_filter', currentBrandFilter.toLowerCase());
+            const outletVal = adminOutletFilter ? adminOutletFilter.value : 'ALL';
+            if (outletVal !== 'ALL') resParams.append('outlet_filter', outletVal);
+            resParams.append('_t', Date.now());
+
             const [r1, r2] = await Promise.all([
-                fetch('/api/admin/reservations', { headers: getAuthHeaders(), cache: 'no-store' }),
-                fetch('/api/admin/private-events', { headers: getAuthHeaders(), cache: 'no-store' })
+                fetch(`/api/admin/reservations?${resParams.toString()}`, { headers: getAuthHeaders(), cache: 'no-store' }),
+                fetch(`/api/admin/private-events?${resParams.toString()}`, { headers: getAuthHeaders(), cache: 'no-store' })
             ]);
             const list1 = r1.ok ? await r1.json() : [];
             const list2 = r2.ok ? await r2.json() : [];
@@ -2453,22 +2626,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const itemsHtml = (order.items || []).map(i => `
                 <div style="display: flex; justify-content: space-between; padding: 2px 0;">
-                    <span>${i.name} × <strong>${i.quantity}</strong></span>
+                    <span>${escapeHtml(i.name)} × <strong>${i.quantity}</strong></span>
                     <span>₹${i.price * i.quantity}</span>
                 </div>
             `).join('');
 
+            const isCafeOrder = (order.brand === 'cafe') || (order.id && order.id.startsWith('MM-'));
+            const brandBadge = isCafeOrder
+                ? `<span class="order-brand-badge badge-cafe"><span class="material-symbols-outlined" style="font-size: 13px;">local_cafe</span> Cafe</span>`
+                : `<span class="order-brand-badge badge-restaurant"><span class="material-symbols-outlined" style="font-size: 13px;">restaurant</span> Restaurant</span>`;
+
             card.innerHTML = `
                 <div class="admin-order-header">
-                    <div>
-                        <strong style="font-size: 1.1rem; color: var(--color-primary); cursor: pointer;" class="admin-inspect-trigger" data-id="${order.id}">${order.id}</strong>
-                        <span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary); margin-left: 8px;">📍 ${order.outletId}</span>
-                        <span style="font-size: 0.8rem; color: var(--color-text-muted); margin-left: 10px;">Placed: ${order.date}</span>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        ${brandBadge}
+                        <strong style="font-size: 1.1rem; color: var(--color-primary); cursor: pointer;" class="admin-inspect-trigger" data-id="${escapeHtml(order.id)}">${escapeHtml(order.id)}</strong>
+                        <span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${escapeHtml(order.outletId)}</span>
+                        <span style="font-size: 0.8rem; color: var(--color-text-muted); margin-left: 4px;">Placed: ${escapeHtml(order.date)}</span>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--color-secondary);">${order.orderType}</span>
-                        <select class="status-select admin-status-change" data-id="${order.id}">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--color-secondary);">${escapeHtml(order.orderType)}</span>
+                        <select class="status-select admin-status-change" data-id="${escapeHtml(order.id)}">
                             <option value="Confirmed" ${order.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
                             <option value="Kitchen Prep" ${order.status === 'Kitchen Prep' ? 'selected' : ''}>Kitchen Prep</option>
                             <option value="Out for Delivery" ${order.status === 'Out for Delivery' ? 'selected' : ''}>Out for Delivery</option>
@@ -2482,9 +2661,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div>
                         <strong style="color: var(--color-primary); font-size: 0.9rem;">Customer Details</strong>
                         <div style="margin-top: 6px; color: var(--color-text-muted);">
-                            <strong>${order.customerName}</strong><br>
-                            📞 Phone: ${order.phone}<br>
-                            📍 Address/Table: <strong>${order.address}</strong>
+                            <strong>${escapeHtml(order.customerName)}</strong><br>
+                            📞 Phone: ${escapeHtml(order.phone)}<br>
+                            📍 Address/Table: <strong>${escapeHtml(order.address)}</strong>
                         </div>
                     </div>
 
@@ -2596,6 +2775,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const adminOutletFilter = document.getElementById('admin-outlet-filter');
 
+    function updateOutletFilterOptions(brand) {
+        const selects = [
+            adminOutletFilter,
+            document.getElementById('admin-employee-outlet-filter')
+        ].filter(Boolean);
+
+        selects.forEach(sel => {
+            const currentVal = sel.value;
+            const options = sel.querySelectorAll('option');
+            options.forEach(opt => {
+                const optBrand = opt.dataset.brand;
+                if (opt.value === 'ALL' || !optBrand) {
+                    opt.hidden = false;
+                    opt.style.display = '';
+                } else if (brand === 'ALL') {
+                    opt.hidden = false;
+                    opt.style.display = '';
+                } else if (brand === 'CAFE') {
+                    const show = (optBrand === 'cafe');
+                    opt.hidden = !show;
+                    opt.style.display = show ? '' : 'none';
+                } else if (brand === 'RESTAURANT') {
+                    const show = (optBrand === 'restaurant');
+                    opt.hidden = !show;
+                    opt.style.display = show ? '' : 'none';
+                }
+            });
+
+            const selectedOpt = sel.querySelector(`option[value="${currentVal}"]`);
+            if (selectedOpt && (selectedOpt.hidden || selectedOpt.style.display === 'none')) {
+                sel.value = 'ALL';
+            }
+        });
+    }
+
+    // Wire Global Brand Channel Filter Pills
+    document.querySelectorAll('#global-brand-filter .brand-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#global-brand-filter .brand-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentBrandFilter = btn.dataset.brand || 'ALL';
+            updateOutletFilterOptions(currentBrandFilter);
+            renderAdminDashboard();
+            loadInlineReservations();
+        });
+    });
+    updateOutletFilterOptions(currentBrandFilter);
+
     if (adminSearchInput) adminSearchInput.addEventListener('input', () => {
         renderAdminDashboard();
         loadInlineReservations();
@@ -2615,19 +2842,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (adminClearDbBtn) {
         adminClearDbBtn.addEventListener('click', async () => {
-            if (confirmDoubleDelete('ALL food orders in the entire database')) {
+            const scopeLabel = currentBrandFilter === 'CAFE' 
+                ? 'ALL Meet Me Cafe orders' 
+                : (currentBrandFilter === 'RESTAURANT' ? 'ALL BSR Restaurant orders' : 'ALL food orders in the entire database');
+            if (confirmDoubleDelete(scopeLabel)) {
                 try {
-                    const res = await fetch('/api/admin/orders', { method: 'DELETE', headers: getAuthHeaders() });
+                    const wipeUrl = currentBrandFilter !== 'ALL'
+                        ? `/api/admin/orders?brand_filter=${currentBrandFilter.toLowerCase()}`
+                        : '/api/admin/orders';
+                    const res = await fetch(wipeUrl, { method: 'DELETE', headers: getAuthHeaders() });
                     if (res.ok) {
-                        bsrDB.clearOrders();
-                        showToast('All order database records deleted.');
+                        if (currentBrandFilter === 'ALL') {
+                            bsrDB.clearOrders();
+                        }
+                        showToast(`Order records (${scopeLabel}) deleted.`);
                         await renderAdminDashboard();
                     } else {
                         const err = await res.json();
                         showToast(err.detail || 'Clear DB failed');
                     }
                 } catch (e) {
-                    bsrDB.clearOrders();
+                    if (currentBrandFilter === 'ALL') {
+                        bsrDB.clearOrders();
+                    }
                     showToast('Clear DB request sent.');
                     await renderAdminDashboard();
                 }
@@ -2651,8 +2888,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <tr>
                 <td style="width: 40px; text-align: center; color: var(--color-text-muted);">${idx + 1}</td>
                 <td>
-                    <strong style="color: var(--color-primary);">${item.name}</strong>
-                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">${item.id && item.id !== 'undefined' ? `ID: ${item.id}` : `Item #${idx + 1}`}</div>
+                    <strong style="color: var(--color-primary);">${escapeHtml(item.name)}</strong>
+                    <div style="font-size: 0.75rem; color: var(--color-text-muted);">${item.id && item.id !== 'undefined' ? `ID: ${escapeHtml(item.id)}` : `Item #${idx + 1}`}</div>
                 </td>
                 <td style="text-align: center;"><strong>${item.quantity}</strong></td>
                 <td style="text-align: right;">₹${item.price}</td>
@@ -2670,10 +2907,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         Customer & Order Meta
                     </h4>
                     <div class="order-info-list">
-                        <div class="order-info-row"><span>Customer Name:</span> <strong>${order.customerName}</strong></div>
-                        <div class="order-info-row"><span>Phone Number:</span> <strong>📞 ${order.phone}</strong></div>
-                        <div class="order-info-row"><span>Order Type:</span> <strong style="color: var(--color-secondary);">${order.orderType}</strong></div>
-                        <div class="order-info-row"><span>Delivery Address / Table:</span> <strong>📍 ${order.address}</strong></div>
+                        <div class="order-info-row"><span>Customer Name:</span> <strong>${escapeHtml(order.customerName)}</strong></div>
+                        <div class="order-info-row"><span>Phone Number:</span> <strong>📞 ${escapeHtml(order.phone)}</strong></div>
+                        <div class="order-info-row"><span>Order Type:</span> <strong style="color: var(--color-secondary);">${escapeHtml(order.orderType)}</strong></div>
+                        <div class="order-info-row"><span>Delivery Address / Table:</span> <strong>📍 ${escapeHtml(order.address)}</strong></div>
                         <div class="order-info-row"><span>Payment Status:</span> <strong style="color: #16a34a;">Prepaid / Verified</strong></div>
                     </div>
                 </div>
@@ -2685,7 +2922,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </h4>
                     <div class="order-info-list">
                         <div class="order-info-row"><span>Subtotal (${order.items.length} items):</span> <span>₹${order.subtotal}</span></div>
-                        <div class="order-info-row"><span>Promo Coupon Code:</span> <strong>${order.couponCode || 'None Applied'}</strong></div>
+                        <div class="order-info-row"><span>Promo Coupon Code:</span> <strong>${escapeHtml(order.couponCode || 'None Applied')}</strong></div>
                         ${order.discount > 0 ? `<div class="order-info-row" style="color: #16a34a;"><span>Discount Amount:</span> <span>-₹${order.discount}</span></div>` : ''}
                         <div class="order-info-row"><span>Taxes & Delivery Fee:</span> <span style="color: #16a34a;">₹0 (Free Delivery)</span></div>
                         <div class="order-info-row" style="border-top: 1px dashed var(--color-border-subtle); padding-top: 8px; font-size: 1.05rem;">
@@ -3148,7 +3385,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const name = document.getElementById('emp-name').value.trim();
             const position = document.getElementById('emp-position').value.trim();
             const department = document.getElementById('emp-department').value;
-            const outletId = document.getElementById('emp-outlet-id') ? document.getElementById('emp-outlet-id').value : 'OUTLET-01';
+            const outletId = document.getElementById('emp-outlet-id') ? document.getElementById('emp-outlet-id').value : 'KL01';
             const phone = document.getElementById('emp-phone').value.trim();
 
             try {
@@ -3205,22 +3442,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const rows = employees.map(e => `
                         <tr>
-                            <td>#${e.id}</td>
-                            <td><strong style="color: var(--color-primary);">${e.name}</strong></td>
-                            <td><span style="font-weight: 600; color: var(--color-secondary);">${e.position}</span></td>
-                            <td>${e.department}</td>
+                            <td>#${escapeHtml(e.id)}</td>
+                            <td><strong style="color: var(--color-primary);">${escapeHtml(e.name)}</strong></td>
+                            <td><span style="font-weight: 600; color: var(--color-secondary);">${escapeHtml(e.position)}</span></td>
+                            <td>${escapeHtml(e.department)}</td>
                             <td>
                                 ${isSuperUser ? `
-                                    <select class="status-select admin-emp-outlet-change" data-id="${e.id}" title="Super Manager/Admin: Change Outlet">
-                                        <option value="OUTLET-01" ${e.outlet_id === 'OUTLET-01' ? 'selected' : ''}>📍 OUTLET-01</option>
-                                        <option value="OUTLET-02" ${e.outlet_id === 'OUTLET-02' ? 'selected' : ''}>📍 OUTLET-02</option>
-                                        <option value="OUTLET-03" ${e.outlet_id === 'OUTLET-03' ? 'selected' : ''}>📍 OUTLET-03</option>
+                                    <select class="status-select admin-emp-outlet-change" data-id="${escapeHtml(e.id)}" title="Super Manager/Admin: Change Outlet">
+                                        <option value="KL01" ${e.outlet_id === 'KL01' || e.outlet_id === 'OUTLET-01' ? 'selected' : ''}>📍 Kalyani Main (KL01)</option>
+                                        <option value="KL02" ${e.outlet_id === 'KL02' || e.outlet_id === 'OUTLET-02' ? 'selected' : ''}>📍 Kalyani Branch 2 (KL02)</option>
+                                        <option value="MM01" ${e.outlet_id === 'MM01' ? 'selected' : ''}>☕ Meet Me Kalyani (MM01)</option>
                                     </select>
                                 ` : `
-                                    <span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${e.outlet_id || 'OUTLET-01'}</span>
+                                    <span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${escapeHtml(e.outlet_id || 'KL01')}</span>
                                 `}
                             </td>
-                            <td>📞 ${e.phone}</td>
+                            <td>📞 ${escapeHtml(e.phone)}</td>
                             <td>
                                 <select class="status-select admin-emp-status-change" data-id="${e.id}">
                                     <option value="Active" ${e.status === 'Active' ? 'selected' : ''}>Active</option>
@@ -3353,12 +3590,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const username = document.getElementById('admin-new-username').value.trim();
             const password = document.getElementById('admin-new-password').value.trim();
             const role = document.getElementById('admin-new-role').value;
+            const outletId = document.getElementById('admin-new-outlet') ? document.getElementById('admin-new-outlet').value : 'KL01';
 
             try {
                 const res = await fetch('/api/admin/users', {
                     method: 'POST',
                     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify({ username, password, role })
+                    body: JSON.stringify({ username, password, role, outlet_id: outletId })
                 });
 
                 if (res.ok) {
@@ -3405,14 +3643,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                                 <div>
                                     <div class="rbac-username-row">
-                                        <span class="rbac-username">${u.username}</span>
+                                        <span class="rbac-username">${escapeHtml(u.username)}</span>
                                         ${isSelf ? '<span class="rbac-self-pill">YOU</span>' : ''}
                                         <span class="rbac-status-dot ${u.is_active ? 'active' : 'disabled'}">${u.is_active ? 'Active' : 'Disabled'}</span>
                                     </div>
                                     <div class="rbac-user-meta">
-                                        <span>Account ID: <strong style="color: #475569;">#${u.id}</strong></span>
+                                        <span>Account ID: <strong style="color: #475569;">#${escapeHtml(u.id)}</strong></span>
                                         <span>• Created: <strong style="color: #475569;">${new Date(u.created_at).toLocaleDateString()}</strong></span>
-                                        <span>• Outlet: <strong style="color: var(--color-primary);">📍 ${u.outlet_id || 'OUTLET-01'}</strong></span>
+                                        <span>• Outlet: <strong style="color: var(--color-primary);">📍 ${escapeHtml(u.outlet_id || 'KL01')}</strong></span>
                                     </div>
                                 </div>
                             </div>
@@ -3438,9 +3676,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="rbac-role-box">
                                     <label class="rbac-role-label">Assigned Outlet</label>
                                     <select class="rbac-role-select-card admin-user-outlet-change" data-id="${u.id}" data-username="${u.username}" title="Reassign Outlet for ${u.username}">
-                                        <option value="OUTLET-01" ${u.outlet_id === 'OUTLET-01' ? 'selected' : ''}>📍 OUTLET-01 (Main)</option>
-                                        <option value="OUTLET-02" ${u.outlet_id === 'OUTLET-02' ? 'selected' : ''}>📍 OUTLET-02 (Dhanmondi)</option>
-                                        <option value="OUTLET-03" ${u.outlet_id === 'OUTLET-03' ? 'selected' : ''}>📍 OUTLET-03 (Gulshan)</option>
+                                        <option value="KL01" ${u.outlet_id === 'KL01' || u.outlet_id === 'OUTLET-01' ? 'selected' : ''}>📍 Kalyani Main (KL01)</option>
+                                        <option value="KL02" ${u.outlet_id === 'KL02' || u.outlet_id === 'OUTLET-02' ? 'selected' : ''}>📍 Kalyani Branch 2 (KL02)</option>
+                                        <option value="MM01" ${u.outlet_id === 'MM01' ? 'selected' : ''}>☕ Meet Me Kalyani (MM01)</option>
                                     </select>
                                 </div>
 
@@ -3602,6 +3840,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams();
             if (query) params.append('search', query);
             if (outletFilterVal !== 'ALL') params.append('outlet_filter', outletFilterVal);
+            if (currentBrandFilter !== 'ALL') params.append('brand_filter', currentBrandFilter.toLowerCase());
 
             params.append('_t', Date.now());
 
@@ -3634,16 +3873,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (reservations.length === 0) {
                 html += `<p style="color: var(--color-text-muted); padding: 12px 0;">No table reservation requests logged yet.</p>`;
             } else {
-                const resRows = reservations.map(r => `
+                const resRows = reservations.map(r => {
+                    const rBrandBadge = r.brand === 'cafe'
+                        ? `<span class="order-brand-badge badge-cafe" style="font-size:0.68rem; margin-right:4px;"><span class="material-symbols-outlined" style="font-size:11px;">local_cafe</span> Cafe</span>`
+                        : `<span class="order-brand-badge badge-restaurant" style="font-size:0.68rem; margin-right:4px;"><span class="material-symbols-outlined" style="font-size:11px;">restaurant</span> Restaurant</span>`;
+                    return `
                     <tr>
                         <td style="text-align: center;"><input type="checkbox" class="res-select-checkbox" data-id="${r.id}" style="cursor: pointer;"></td>
                         <td>#${r.id}</td>
-                        <td><strong style="color: var(--color-primary);">${r.guest_name}</strong></td>
-                        <td><span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${r.outlet_id || 'OUTLET-01'}</span></td>
-                        <td>📞 ${r.phone}<br>${r.email ? '✉️ ' + r.email : ''}</td>
+                        <td>${rBrandBadge} <strong style="color: var(--color-primary);">${escapeHtml(r.guest_name)}</strong></td>
+                        <td><span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${escapeHtml(r.outlet_id || 'KL01')}</span></td>
+                        <td>📞 ${escapeHtml(r.phone)}<br>${r.email ? '✉️ ' + escapeHtml(r.email) : ''}</td>
                         <td style="text-align: center;">👥 <strong>${r.guests_count} Guests</strong></td>
-                        <td>📅 ${r.reservation_date}<br>⏰ ${r.reservation_time}</td>
-                        <td>${r.special_request || '—'}</td>
+                        <td>📅 ${escapeHtml(r.reservation_date)}<br>⏰ ${escapeHtml(r.reservation_time)}</td>
+                        <td>${escapeHtml(r.special_request || '—')}</td>
                         <td>
                             <select class="status-select admin-res-status-change" data-id="${r.id}">
                                 <option value="Pending" ${r.status === 'Pending' ? 'selected' : ''}>Pending</option>
@@ -3658,7 +3901,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             </button>
                         </td>
                     </tr>
-                `).join('');
+                    `;
+                }).join('');
 
                 html += `
                     <table class="res-table" style="margin-bottom: 24px;">
@@ -3702,17 +3946,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (events.length === 0) {
                 html += `<p style="color: var(--color-text-muted); padding: 12px 0;">No private event inquiries recorded yet.</p>`;
             } else {
-                const eventRows = events.map(e => `
+                const eventRows = events.map(e => {
+                    const eBrandBadge = e.brand === 'cafe'
+                        ? `<span class="order-brand-badge badge-cafe" style="font-size:0.68rem; margin-right:4px;"><span class="material-symbols-outlined" style="font-size:11px;">local_cafe</span> Cafe</span>`
+                        : `<span class="order-brand-badge badge-restaurant" style="font-size:0.68rem; margin-right:4px;"><span class="material-symbols-outlined" style="font-size:11px;">restaurant</span> Restaurant</span>`;
+                    return `
                     <tr>
                         <td style="text-align: center;"><input type="checkbox" class="event-select-checkbox" data-id="${e.id}" style="cursor: pointer;"></td>
                         <td>#${e.id}</td>
-                        <td><strong style="color: var(--color-primary);">${e.organizer_name}</strong></td>
-                        <td><span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${e.outlet_id || 'OUTLET-01'}</span></td>
-                        <td>📞 ${e.phone}<br>${e.email ? '✉️ ' + e.email : ''}</td>
-                        <td><strong style="color: var(--color-secondary);">${e.event_type}</strong></td>
+                        <td>${eBrandBadge} <strong style="color: var(--color-primary);">${escapeHtml(e.organizer_name)}</strong></td>
+                        <td><span style="font-size: 0.75rem; font-weight: 700; background-color: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; color: var(--color-primary);">📍 ${escapeHtml(e.outlet_id || 'KL01')}</span></td>
+                        <td>📞 ${escapeHtml(e.phone)}<br>${e.email ? '✉️ ' + escapeHtml(e.email) : ''}</td>
+                        <td><strong style="color: var(--color-secondary);">${escapeHtml(e.event_type)}</strong></td>
                         <td style="text-align: center;">👥 <strong>${e.guest_count} Guests</strong></td>
-                        <td>📅 ${e.event_date}<br>⏰ ${e.event_time || 'TBD'}</td>
-                        <td>${e.special_notes || '—'}</td>
+                        <td>📅 ${escapeHtml(e.event_date)}<br>⏰ ${escapeHtml(e.event_time || 'TBD')}</td>
+                        <td>${escapeHtml(e.special_notes || '—')}</td>
                         <td>
                             <select class="status-select admin-event-status-change" data-id="${e.id}">
                                 <option value="Pending" ${e.status === 'Pending' ? 'selected' : ''}>Pending</option>
@@ -3727,7 +3975,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             </button>
                         </td>
                     </tr>
-                `).join('');
+                    `;
+                }).join('');
 
                 html += `
                     <table class="res-table">
@@ -4008,10 +4257,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         return `
                             <div style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
                                 <span style="color: #94a3b8; font-size: 0.8rem; min-width: 140px;">${new Date(l.timestamp).toLocaleString()}</span>
-                                <span style="background-color: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">IP: ${l.ip_address}</span>
-                                <span style="font-weight: 700; color: #f1f5f9;">User: ${l.username}</span>
-                                <span style="font-weight: 700; color: ${actionColor}; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px;">${l.action}</span>
-                                <span style="color: #cbd5e1; flex: 1;">${l.details || 'N/A'}</span>
+                                <span style="background-color: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">IP: ${escapeHtml(l.ip_address)}</span>
+                                <span style="font-weight: 700; color: #f1f5f9;">User: ${escapeHtml(l.username)}</span>
+                                <span style="font-weight: 700; color: ${actionColor}; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px;">${escapeHtml(l.action)}</span>
+                                <span style="color: #cbd5e1; flex: 1;">${escapeHtml(l.details || 'N/A')}</span>
                             </div>
                         `;
                     }).join('');
@@ -4210,17 +4459,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const deliveryFee = orderType === 'Delivery' ? 40 : 0;
                 const finalTotal = Math.max(0, subtotal + tax + deliveryFee - discountAmount);
 
+                const outletInput = document.getElementById('p-outlet-id');
+                const selectedOutlet = outletInput ? outletInput.value : 'KL01';
+
                 const payload = {
                     customer_name: customerName,
                     customer_phone: customerPhone,
                     customer_email: customerEmail || null,
                     order_type: orderType,
                     delivery_address: deliveryAddress || 'N/A',
+                    table_number: orderType === 'Dine-In' ? deliveryAddress : null,
+                    outlet_id: selectedOutlet,
+                    brand: selectedOutlet === 'MM01' ? 'cafe' : 'restaurant',
                     payment_method: paymentMethod,
                     coupon_code: null,
-                    items: checkoutCart.map(item => ({
+                    items: checkoutCart.map((item, idx) => ({
+                        id: item.id || `dish-${idx + 1}`,
                         name: item.name,
-                        quantity: item.quantity,
+                        qty: item.quantity || 1,
                         price: item.price
                     }))
                 };
@@ -4232,7 +4488,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 try {
-                    const response = await fetch('/orders', {
+                    const response = await fetch('/api/orders', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)

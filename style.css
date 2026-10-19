@@ -1776,10 +1776,30 @@ body {
         border-radius: var(--radius-md);
     }
 
-    /* Form Modal & Drawer Mobile */
+    /* Form Modal & Drawer Mobile — constrain height accounting for browser top/bottom chrome
+       dvh = dynamic viewport height: auto-adjusts when mobile address bar shows/hides.
+       env(safe-area-inset-top) covers notched / browser-chrome top space on real devices. */
     .modal-box {
-        padding: 24px 16px;
+        padding: 20px 16px 24px;
         max-width: 92%;
+        /* fallback for browsers that don't support dvh */
+        max-height: calc(82vh - env(safe-area-inset-top, 0px));
+        /* preferred: dvh shrinks with visible browser chrome */
+        max-height: calc(82dvh - env(safe-area-inset-top, 0px));
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Keep close button pinned so it never scrolls out of view — same look as desktop */
+    .modal-close-btn {
+        position: sticky;
+        top: 8px;
+        float: right;
+        z-index: 10;
+        background: transparent;
+        padding: 4px;
+        margin-bottom: -32px;
+        color: var(--color-primary);
     }
 
     .form-row {
@@ -1912,7 +1932,20 @@ body {
     display: none !important;
 }
 
+/* --- Hide Admin Panel links on Mobile Devices (<= 768px) --- */
 @media (max-width: 768px) {
+    .desktop-only,
+    .hide-on-mobile,
+    .hide-mobile,
+    a[href="admin.html"],
+    a[href="/admin.html"],
+    a[href="/admin"] {
+        display: none !important;
+    }
+}
+
+@media (max-width: 768px) {
+
     .site-header .brand-logo {
         padding-left: 14px;
     }
@@ -1975,6 +2008,16 @@ body {
 
     .mobile-nav-item.active .material-symbols-outlined {
         transform: translateY(-2px) !important;
+    }
+
+    /* Modal backdrop: align from top, accounting for browser top chrome + bottom nav bar.
+       env(safe-area-inset-top) covers the mobile browser address bar / notch space.  */
+    .modal-backdrop {
+        align-items: flex-start !important;
+        /* fallback */
+        padding-top: calc(12px + env(safe-area-inset-top, 0px));
+        /* preferred: accounts for browser address bar height dynamically */
+        padding-bottom: 74px; /* above the 64px mobile bottom nav bar */
     }
 
     .drawer-backdrop,
@@ -3695,5 +3738,115 @@ body {
         width: 100% !important;
         z-index: 999 !important;
         padding-bottom: env(safe-area-inset-bottom) !important;
+    }
+}
+
+/* ==========================================================================
+   Meet Me Cafe & Multi-Brand Admin Dashboard Styles
+   ========================================================================== */
+
+.brand-bar-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin: 8px 0 24px;
+}
+
+.brand-segmented-filter {
+    display: inline-flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 9999px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    gap: 4px;
+}
+
+.brand-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 9999px;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    user-select: none;
+}
+
+.brand-pill .material-symbols-outlined {
+    font-size: 18px;
+    transition: transform 0.2s ease;
+}
+
+.brand-pill:hover {
+    color: #1e293b;
+    background: rgba(255, 255, 255, 0.6);
+}
+
+.brand-pill:hover .material-symbols-outlined {
+    transform: scale(1.1);
+}
+
+/* Active State: All Channels */
+.brand-pill.active[data-brand="ALL"] {
+    background: #1e293b;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(30, 41, 59, 0.25);
+}
+
+/* Active State: BSR Restaurant */
+.brand-pill.active[data-brand="RESTAURANT"] {
+    background: #bb0024;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(187, 0, 36, 0.3);
+}
+
+/* Active State: Meet Me Cafe */
+.brand-pill.active[data-brand="CAFE"] {
+    background: #d97706;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+}
+
+/* Order Badge for Brand */
+.order-brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.order-brand-badge.badge-cafe {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.order-brand-badge.badge-restaurant {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+@media (max-width: 640px) {
+    .brand-segmented-filter {
+        width: 100%;
+        display: flex;
+    }
+    .brand-pill {
+        flex: 1;
+        justify-content: center;
+        padding: 8px 10px;
+        font-size: 0.78rem;
     }
 }

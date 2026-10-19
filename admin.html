@@ -189,6 +189,24 @@
                     </div>
                 </div>
 
+                <!-- Global Brand Channel Selector -->
+                <div class="brand-bar-container" id="admin-global-brand-bar">
+                    <div class="brand-segmented-filter" id="global-brand-filter">
+                        <button type="button" class="brand-pill active" data-brand="ALL" id="brand-pill-all">
+                            <span class="material-symbols-outlined">layers</span>
+                            <span>All Channels</span>
+                        </button>
+                        <button type="button" class="brand-pill" data-brand="RESTAURANT" id="brand-pill-restaurant">
+                            <span class="material-symbols-outlined">restaurant</span>
+                            <span>BSR Restaurant</span>
+                        </button>
+                        <button type="button" class="brand-pill" data-brand="CAFE" id="brand-pill-cafe">
+                            <span class="material-symbols-outlined">local_cafe</span>
+                            <span>Meet Me Cafe</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Dashboard Section Tabs -->
                 <div class="admin-tab-bar"
                     style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid var(--color-border-subtle); padding-bottom: 8px; flex-wrap: wrap;">
@@ -221,9 +239,9 @@
                     <div class="filter-controls">
                         <select id="admin-outlet-filter" class="form-input" style="width: auto; cursor: pointer;">
                             <option value="ALL">All Outlets</option>
-                            <option value="OUTLET-01">Main Branch (OUTLET-01)</option>
-                            <option value="OUTLET-02">Dhanmondi Branch (OUTLET-02)</option>
-                            <option value="OUTLET-03">Gulshan Branch (OUTLET-03)</option>
+                            <option value="KL01" data-brand="restaurant">📍 Kalyani Main (KL01)</option>
+                            <option value="KL02" data-brand="restaurant">📍 Kalyani Branch 2 (KL02)</option>
+                            <option value="MM01" data-brand="cafe">☕ Meet Me Kalyani (MM01)</option>
                         </select>
 
                         <select id="admin-status-filter" class="form-input" style="width: auto; cursor: pointer;">
@@ -326,9 +344,9 @@
                             <input type="text" id="admin-employee-search" placeholder="Search staff..." class="form-input" style="padding: 6px 12px; font-size: 0.85rem; width: 170px;">
                             <select id="admin-employee-outlet-filter" class="form-input" style="padding: 6px 10px; font-size: 0.82rem; height: 34px;">
                                 <option value="ALL">📍 All Outlets</option>
-                                <option value="OUTLET-01">📍 OUTLET-01 (Main)</option>
-                                <option value="OUTLET-02">📍 OUTLET-02 (Dhanmondi)</option>
-                                <option value="OUTLET-03">📍 OUTLET-03 (Gulshan)</option>
+                                <option value="KL01" data-brand="restaurant">📍 Kalyani Main (KL01)</option>
+                                <option value="KL02" data-brand="restaurant">📍 Kalyani Branch 2 (KL02)</option>
+                                <option value="MM01" data-brand="cafe">☕ Meet Me Kalyani (MM01)</option>
                             </select>
                             <select id="admin-employee-sort" class="form-input" style="padding: 6px 10px; font-size: 0.82rem; height: 34px;">
                                 <option value="default">Sort: Newest First</option>
@@ -376,6 +394,36 @@
 
             </div>
         </main>
+
+        <!-- Site Footer -->
+        <footer class="site-footer" style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div class="container">
+                <div class="footer-top">
+                    <div>
+                        <h3 class="font-bengali" style="font-size: 1.4rem; font-weight: 700;">বাঙালির শখের রান্নাঘর</h3>
+                    
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                        <a href="index.html" style="color: #ffffff; opacity: 0.85; font-size: 0.85rem; text-decoration: none;">🏠 Main Website</a>
+                        <a href="checkout.html" style="color: #ffffff; opacity: 0.85; font-size: 0.85rem; text-decoration: none;">🛒 Checkout</a>
+                        <a href="https://www.instagram.com/cafe.meetme_/" target="_blank" rel="noopener noreferrer" class="social-icon" title="Follow us on Instagram">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="footer-bottom">
+                    <p style="margin: 0; font-size: 0.8rem; opacity: 0.75;">© 2026 বাঙালির শখের রান্নাঘর & Meet Me Cafe. All Rights Reserved. • Created by <a href="https://kalakritico.in" target="_blank" rel="noopener noreferrer" class="created-by-link">kalakritico</a></p>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <span style="font-size: 0.8rem; opacity: 0.65;">🔒 Admin Operations Portal</span>
+                    </div>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <!-- Order Details Modal -->
@@ -500,9 +548,9 @@
                 <div class="form-group" style="margin-bottom: 12px;">
                     <label class="form-label">Assigned Outlet</label>
                     <select id="emp-outlet-id" class="form-input">
-                        <option value="OUTLET-01">Main Branch (OUTLET-01)</option>
-                        <option value="OUTLET-02">Dhanmondi Branch (OUTLET-02)</option>
-                        <option value="OUTLET-03">Gulshan Branch (OUTLET-03)</option>
+                        <option value="KL01">Kalyani Main (KL01) - Restaurant</option>
+                        <option value="KL02">Kalyani Branch 2 (KL02) - Restaurant</option>
+                        <option value="MM01">Meet Me Kalyani (MM01) - Cafe</option>
                     </select>
                 </div>
                 <div class="form-group" style="margin-bottom: 20px;">
@@ -534,13 +582,21 @@
                     <label class="form-label">Password (min 8 chars)</label>
                     <input type="password" id="admin-new-password" required minlength="8" placeholder="Enter fresh dedicated password" class="form-input" autocomplete="new-password">
                 </div>
-                <div class="form-group" style="margin-bottom: 20px;">
+                <div class="form-group" style="margin-bottom: 12px;">
                     <label class="form-label">Role Authority</label>
                     <select id="admin-new-role" class="form-input">
                         <option value="Super Manager">Super Manager (All Outlets Control)</option>
                         <option value="Manager">Manager (Designated Outlet Only)</option>
                         <option value="Staff">Staff (Order Management Only)</option>
                         <option value="Super Admin">Super Admin (Full Platform Authority)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label">Assigned Outlet</label>
+                    <select id="admin-new-outlet" class="form-input">
+                        <option value="KL01">📍 Kalyani Main (KL01) - Restaurant</option>
+                        <option value="KL02">📍 Kalyani Branch 2 (KL02) - Restaurant</option>
+                        <option value="MM01">☕ Meet Me Kalyani (MM01) - Cafe</option>
                     </select>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Create Admin Account</button>

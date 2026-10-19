@@ -69,7 +69,8 @@ class Order(Base):
     coupon_code = Column(String(50), nullable=True)
     total = Column(Float, nullable=False, default=0.0)
     status = Column(String(30), nullable=False, default="Confirmed")  # Confirmed, Kitchen Prep, Out for Delivery, Completed, Cancelled
-    outlet_id = Column(String(50), nullable=False, default="OUTLET-01")
+    outlet_id = Column(String(50), nullable=False, default="KL01")
+    brand = Column(String(20), nullable=False, default="restaurant")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     def to_dict(self):
@@ -87,6 +88,7 @@ class Order(Base):
             "total": self.total,
             "status": self.status,
             "outlet_id": self.outlet_id,
+            "brand": self.brand or "restaurant",
             "created_at": self.created_at.isoformat() if isinstance(self.created_at, datetime.datetime) else self.created_at,
         }
 
@@ -103,7 +105,8 @@ class Reservation(Base):
     special_request = Column(Text, nullable=True)
     event_type = Column(String(50), nullable=False, default="Table Booking")  # Table Booking or Private Event
     status = Column(String(30), nullable=False, default="Pending")
-    outlet_id = Column(String(50), nullable=False, default="OUTLET-01")
+    outlet_id = Column(String(50), nullable=False, default="KL01")
+    brand = Column(String(20), nullable=False, default="restaurant")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     def to_dict(self):
@@ -119,6 +122,7 @@ class Reservation(Base):
             "event_type": self.event_type,
             "status": self.status,
             "outlet_id": self.outlet_id,
+            "brand": self.brand or "restaurant",
             "created_at": self.created_at.isoformat() if isinstance(self.created_at, datetime.datetime) else self.created_at,
         }
 
@@ -135,7 +139,8 @@ class PrivateEvent(Base):
     event_time = Column(String(20), nullable=True)
     special_notes = Column(Text, nullable=True)
     status = Column(String(30), nullable=False, default="Pending")  # Pending, Confirmed, Completed, Cancelled
-    outlet_id = Column(String(50), nullable=False, default="OUTLET-01")
+    outlet_id = Column(String(50), nullable=False, default="KL01")
+    brand = Column(String(20), nullable=False, default="restaurant")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     def to_dict(self):
@@ -151,6 +156,7 @@ class PrivateEvent(Base):
             "special_notes": self.special_notes,
             "status": self.status,
             "outlet_id": self.outlet_id,
+            "brand": self.brand or "restaurant",
             "created_at": self.created_at.isoformat() if isinstance(self.created_at, datetime.datetime) else self.created_at,
         }
 

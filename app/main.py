@@ -1,11 +1,14 @@
 import os
 import datetime
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.core.limiter import limiter
 from app.core.config import settings
 from app.core.security import get_password_hash, log_audit
 from app.core.db_sync import attach_db_revision_headers
@@ -25,6 +28,30 @@ app = FastAPI(
     docs_url="/docs" if not is_prod else None,
     redoc_url="/redoc" if not is_prod else None
 )
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# Request Payload Size Limit Middleware (DoS / Memory Bloat Protection)
+class PayloadSizeLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.method in ("POST", "PUT", "PATCH"):
+            content_length = request.headers.get("content-length")
+            if content_length:
+                try:
+                    if int(content_length) > settings.MAX_PAYLOAD_SIZE_BYTES:
+                        return JSONResponse(
+                            status_code=413,
+                            content={
+                                "detail": f"Payload too large. Maximum allowed request size is {settings.MAX_PAYLOAD_SIZE_BYTES // 1024} KB."
+                            }
+                        )
+                except ValueError:
+                    pass
+        return await call_next(request)
+
+app.add_middleware(PayloadSizeLimitMiddleware)
+
 
 # Custom Security & DB Revision Headers Middleware
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -45,18 +72,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 # Enable CORS for frontend applications
-allowed_origins = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "https://bsr.vercel.app",
-    "https://www.bangalirsokherrannaghor.in",
-    "https://bangalirsokherrannaghor.in"
-] if is_prod else ["*"]
+configured_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",") if o.strip()]
+allowed_origins = configured_origins if is_prod else ["*"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins if is_prod else [],
-    allow_origin_regex=r"https://.*\.vercel\.app" if is_prod else r".*",
+    allow_origin_regex=r"https://.*" if is_prod else r".*",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     allow_headers=["*"],
@@ -95,7 +117,7 @@ def init_db_and_seed_admin():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        # Schema migration check: ensure role and outlet_id columns exist
+        # Schema migration check: ensure role, outlet_id, and brand columns exist
         for table_name in ["admin_users", "orders", "reservations", "private_events", "employees"]:
             try:
                 db.execute(text(f"ALTER TABLE {table_name} ADD COLUMN role VARCHAR(50) DEFAULT 'Super Admin'"))
@@ -104,6 +126,12 @@ def init_db_and_seed_admin():
                 db.rollback()
             try:
                 db.execute(text(f"ALTER TABLE {table_name} ADD COLUMN outlet_id VARCHAR(50) DEFAULT 'OUTLET-01'"))
+                db.commit()
+            except Exception:
+                db.rollback()
+        for table_name in ["orders", "reservations", "private_events"]:
+            try:
+                db.execute(text(f"ALTER TABLE {table_name} ADD COLUMN brand VARCHAR(20) DEFAULT 'restaurant'"))
                 db.commit()
             except Exception:
                 db.rollback()

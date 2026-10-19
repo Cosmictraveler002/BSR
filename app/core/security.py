@@ -1,3 +1,4 @@
+import re
 import secrets
 import datetime
 import bcrypt
@@ -13,6 +14,7 @@ from app.models import AdminUser, AuditLog
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies a plain password against the bcrypt hashed password."""
+
     try:
         password_bytes = plain_password.encode('utf-8')
         if len(password_bytes) > 72:
@@ -52,10 +54,21 @@ def generate_csrf_token() -> str:
 def log_audit(db: Optional[Session], ip_address: str, username: str, action: str, details: Optional[str] = None):
     """Utility function to append entries to the server AuditLog.
     On Vercel, saves directly to Firestore. Locally, saves to SQLite + syncs to Firestore."""
+    def _clean(val):
+        """Strip HTML/script tags only — preserve normal text in audit records."""
+        if not val:
+            return val
+        return re.sub(r'<[^>]*>', '', val.strip().replace('\x00', ''))
+
+    safe_ip = _clean(ip_address) or "unknown"
+    safe_username = _clean(username) or "system"
+    safe_action = _clean(action) or "UNKNOWN"
+    safe_details = _clean(details) if details else None
+
     if settings.IS_VERCEL:
         # Vercel: save directly to Firestore only
         from app.core.firestore_db import save_audit_log_firestore
-        save_audit_log_firestore(ip_address, username, action, details)
+        save_audit_log_firestore(safe_ip, safe_username, safe_action, safe_details)
         return
 
     # Local: save to SQLite and sync to Firestore
@@ -63,16 +76,17 @@ def log_audit(db: Optional[Session], ip_address: str, username: str, action: str
         return
     try:
         log_entry = AuditLog(
-            ip_address=ip_address or "unknown",
-            username=username or "system",
-            action=action,
-            details=details
+            ip_address=safe_ip,
+            username=safe_username,
+            action=safe_action,
+            details=safe_details
         )
         db.add(log_entry)
         db.commit()
         db.refresh(log_entry)
         from app.core.firestore_db import save_document
         save_document("audit_logs", str(log_entry.id), log_entry.to_dict())
+
     except Exception as e:
         if db:
             db.rollback()
@@ -190,6 +204,43 @@ def require_roles(allowed_roles: list):
             )
         return current_admin
     return role_checker
+
+def enforce_outlet_rls(admin: object, target_outlet_id: Optional[str]) -> bool:
+    """
+    Enforces Row-Level Security (RLS) policies for tenant outlet data isolation.
+    - 'Super Admin' & 'Super Manager' have universal RLS access across all outlets.
+    - 'Manager' & 'Staff' are strictly scoped to their assigned outlet_id.
+    """
+    if not admin:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required for RLS policy evaluation."
+        )
+
+    admin_role = getattr(admin, "role", "Staff") or "Staff"
+    admin_outlet = getattr(admin, "outlet_id", "OUTLET-01") or "OUTLET-01"
+
+    if admin_role in ("Super Admin", "Super Manager"):
+        return True  # Universal RLS Access
+
+    def _norm(c):
+        if not c:
+            return ""
+        s = str(c).strip().upper()
+        alias = {
+            "OUTLET-01": "KL01", "OUTLET-02": "KL02", "OUTLET-03": "KL03",
+            "OUTLET-MM01": "MM01", "MM-01": "MM01"
+        }
+        return alias.get(s, s)
+
+    if target_outlet_id and _norm(admin_outlet) != _norm(target_outlet_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access Denied: Row-level security (RLS) policy restricts access to assigned outlet '{admin_outlet}'."
+        )
+
+    return True
+
 
 def verify_csrf_token(request: Request):
     """
