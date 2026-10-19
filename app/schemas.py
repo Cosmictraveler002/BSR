@@ -1,7 +1,8 @@
 import re
 import datetime
+import secrets
 from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 def sanitize_text(v: Optional[str]) -> Optional[str]:
     """Strip HTML/script tags from input strings to prevent XSS injection.
@@ -31,9 +32,31 @@ class OrderItemSchema(BaseModel):
     price: float = Field(..., ge=0.0, le=50000.0)
     qty: int = Field(..., ge=1, le=50)
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_item_fields(cls, data):
+        if isinstance(data, dict):
+            # If id is missing or int, coerce
+            if "id" not in data or not data["id"]:
+                data["id"] = f"item-{secrets.token_hex(3)}"
+            else:
+                data["id"] = str(data["id"]).strip()
+            # If qty is missing but quantity/count is present
+            if "qty" not in data and "quantity" in data:
+                data["qty"] = data["quantity"]
+            elif "qty" not in data and "count" in data:
+                data["qty"] = data["count"]
+            # Coerce string price if needed
+            if "price" in data and isinstance(data["price"], str):
+                try:
+                    data["price"] = float(data["price"].replace(",", "").strip())
+                except ValueError:
+                    pass
+        return data
+
     @field_validator("id", "name", mode="before")
     def sanitize_inputs(cls, v):
-        return sanitize_text(v)
+        return sanitize_text(str(v) if v is not None else "")
 
 class OrderCreate(BaseModel):
     customer_name: str = Field(..., min_length=2, max_length=100)
@@ -41,10 +64,23 @@ class OrderCreate(BaseModel):
     order_type: str = Field(..., pattern="^(Delivery|Dine-In|Takeaway)$")
     delivery_address: Optional[str] = Field(None, max_length=300)
     table_number: Optional[str] = Field(None, max_length=50)
-    items: List[OrderItemSchema] = Field(..., min_length=1, max_length=30)
+    items: List[OrderItemSchema] = Field(..., min_length=1, max_length=50)
     coupon_code: Optional[str] = Field(None, max_length=30)
     outlet_id: Optional[str] = Field(None, max_length=50)
     brand: Optional[str] = Field("restaurant", max_length=20)
+
+    @field_validator("order_type", mode="before")
+    def normalize_order_type(cls, v):
+        if not v:
+            return "Dine-In"
+        clean = str(v).strip().lower().replace("_", "-").replace(" ", "-")
+        if "dine" in clean or "table" in clean:
+            return "Dine-In"
+        if "take" in clean or "pick" in clean:
+            return "Takeaway"
+        if "deliv" in clean:
+            return "Delivery"
+        return "Dine-In"
 
     @field_validator("customer_name", "delivery_address", "table_number", "coupon_code", "outlet_id", mode="before")
     def sanitize_inputs(cls, v):
