@@ -43,6 +43,7 @@ def set_session_cookie(response: RedirectResponse, data: dict):
     )
 
 @router.get("/reserve", response_class=HTMLResponse)
+@router.get("/reserve/", response_class=HTMLResponse, include_in_schema=False)
 def get_reserve_step1(request: Request):
     """Renders Step 1: Select Experience & Party Size."""
     session_data = get_session_data(request)
@@ -50,6 +51,16 @@ def get_reserve_step1(request: Request):
         "booking_type": session_data.get("booking_type", "table"),
         "guests_count": int(session_data.get("guests_count", 2))
     })
+
+@router.post("/reserve")
+@router.post("/reserve/")
+def post_reserve_root(
+    request: Request,
+    booking_type: str = Form("table"),
+    guests_count: int = Form(2)
+):
+    """Handles POST /reserve and redirects to Step 2."""
+    return post_reserve_step1(request, booking_type, guests_count)
 
 @router.post("/reserve/step1")
 def post_reserve_step1(

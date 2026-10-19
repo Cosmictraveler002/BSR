@@ -19,6 +19,11 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api", tags=["Public Frontend API"])
 
+@router.get("", include_in_schema=False)
+@router.get("/", include_in_schema=False)
+def api_root_status():
+    return {"status": "ok", "service": "BSR Public API", "version": settings.VERSION}
+
 @router.get("/config/firebase")
 def get_firebase_web_config():
     """Returns public Firebase Web SDK configuration."""
@@ -82,6 +87,7 @@ def generate_order_id(brand: str = "restaurant", outlet_code: Optional[str] = No
 
 
 @router.post("/orders", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
+@router.post("/orders/", response_model=OrderOut, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @limiter.limit(settings.ORDERS_RATE_LIMIT)
 def create_order(request: Request, order_data: OrderCreate, db: Session = Depends(get_db)):
     """Creates a new food order with server-side price validation, rate limiting, and brand verification."""
@@ -294,6 +300,7 @@ def get_order_by_id(order_id: str, phone: Optional[str] = None, db: Session = De
     )
 
 @router.post("/reservations", response_model=ReservationOut, status_code=status.HTTP_201_CREATED)
+@router.post("/reservations/", response_model=ReservationOut, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @limiter.limit(settings.RESERVATIONS_RATE_LIMIT)
 def create_reservation(request: Request, res_data: ReservationCreate, db: Session = Depends(get_db)):
     """Submits a new table reservation request with rate limiting and flood guard."""
@@ -418,6 +425,9 @@ def get_reservation_by_id(res_id: int, phone: Optional[str] = None, db: Session 
     )
 
 @router.post("/private-events", response_model=PrivateEventOut, status_code=status.HTTP_201_CREATED)
+@router.post("/private-events/", response_model=PrivateEventOut, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+@router.post("/events", response_model=PrivateEventOut, status_code=status.HTTP_201_CREATED, include_in_schema=False)
+@router.post("/events/", response_model=PrivateEventOut, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @limiter.limit(settings.RESERVATIONS_RATE_LIMIT)
 def create_private_event(request: Request, event_data: PrivateEventCreate, db: Session = Depends(get_db)):
     """Submits a new private dining event / banquet inquiry to the database with rate limiting."""

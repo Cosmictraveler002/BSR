@@ -32,6 +32,9 @@ try:
                 # Try x-forwarded-path
                 elif b"x-forwarded-path" in headers:
                     original_path = headers[b"x-forwarded-path"].decode("utf-8")
+                # Try x-matched-path
+                elif b"x-matched-path" in headers:
+                    original_path = headers[b"x-matched-path"].decode("utf-8")
                 # Try extracting path from x-forwarded-url
                 elif b"x-forwarded-url" in headers:
                     url_str = headers[b"x-forwarded-url"].decode("utf-8")
@@ -42,8 +45,10 @@ try:
                     original_path = urlparse(url_str).path
                 
                 if original_path:
+                    clean_path = original_path.split("?")[0]
                     # Update ASGI scope path to the original path so FastAPI router can match it
-                    scope["path"] = original_path
+                    scope["path"] = clean_path
+                    scope["raw_path"] = clean_path.encode("utf-8")
                     print(f"[debug-routing] Overrode ASGI scope path to: {scope['path']}")
                 else:
                     # Fallback to query params if Vercel mapped path parameters
